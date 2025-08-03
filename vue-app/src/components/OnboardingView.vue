@@ -674,7 +674,12 @@ export default {
           user && user.id && (user.first_name || user.last_name || user.company_email)
         )
         
-        this.onboardingData = validData
+        // Sort by id in descending order - newest records (higher IDs) first
+        const sortedData = validData.sort((a, b) => {
+          return b.id - a.id // Descending order (newest first)
+        })
+        
+        this.onboardingData = sortedData
         console.log(`Loaded ${this.onboardingData.length} valid onboarding records`)
         console.log('Valid records:', this.onboardingData)
       } catch (error) {

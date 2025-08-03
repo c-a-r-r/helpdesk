@@ -185,7 +185,9 @@ export default {
         if (!activityResponse.ok) {
           throw new Error('Failed to fetch recent activity')
         }
-        this.recentActivities = await activityResponse.json()
+        const activities = await activityResponse.json()
+        // Sort activities by timestamp - newest first
+        this.recentActivities = activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
@@ -226,7 +228,7 @@ export default {
           user: 'Sarah Johnson',
           updatedBy: 'hr@company.com'
         }
-      ]
+      ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
     },
     navigateTo(path) {
       this.$router.push(path)
