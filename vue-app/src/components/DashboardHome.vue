@@ -1,5 +1,12 @@
 <template>
   <div class="dashboard-home">
+    <!-- <div class="page-header">
+      <div class="header-content">
+        <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+        <p>Overview of onboarding activities and user statistics</p>
+      </div>
+    </div> -->
+
     <!-- Loading State -->
     <div v-if="loading" class="loading-overlay">
       <div class="loading-content">
@@ -11,7 +18,7 @@
     <!-- Error State -->
     <div v-else-if="error" class="error-banner">
       <div class="error-content">
-        <span class="error-icon">⚠️</span>
+        <i class="fas fa-exclamation-triangle error-icon"></i>
         <span>{{ error }}</span>
         <button @click="fetchDashboardData" class="retry-button">Retry</button>
       </div>
@@ -19,90 +26,143 @@
 
     <!-- Dashboard Content -->
     <div v-else>
-    <!-- Stats Cards -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon">
-          <i class="fas fa-users"></i>
+      <!-- Stats Cards -->
+      <div class="stats-grid">
+        <!-- Total Users Card -->
+        <div class="stat-card">
+          <div class="card-icon">
+            <i class="fas fa-users"></i>
+          </div>
+          <div class="card-content">
+            <h3>{{ stats.totalUsers }}</h3>
+            <p>Total Users</p>
+            <div class="card-meta">
+              <span class="meta-badge">All time</span>
+            </div>
+          </div>
         </div>
-        <div class="stat-info">
-          <h3>{{ stats.totalUsers }}</h3>
-          <p>Total Users Onboarded</p>
+        
+        <!-- Completed Users Card -->
+        <div class="stat-card">
+          <div class="card-icon completed">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="card-content">
+            <h3>{{ stats.completedUsers }}</h3>
+            <p>Completed</p>
+            <div class="card-meta">
+              <span class="meta-badge status-completed">
+                <i class="fas fa-circle"></i>
+                Active
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- In Progress Card -->
+        <div class="stat-card">
+          <div class="card-icon in-progress">
+            <i class="fas fa-spinner"></i>
+          </div>
+          <div class="card-content">
+            <h3>{{ stats.inProgressUsers }}</h3>
+            <p>In Progress</p>
+            <div class="card-meta">
+              <span class="meta-badge status-progress">
+                <i class="fas fa-circle"></i>
+                Processing
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Pending Card -->
+        <div class="stat-card">
+          <div class="card-icon pending">
+            <i class="fas fa-hourglass-half"></i>
+          </div>
+          <div class="card-content">
+            <h3>{{ stats.pendingUsers }}</h3>
+            <p>Pending</p>
+            <div class="card-meta">
+              <span class="meta-badge status-pending">
+                <i class="fas fa-circle"></i>
+                Waiting
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Offboarded Card -->
+        <div class="stat-card">
+          <div class="card-icon offboarded">
+            <i class="fas fa-user-times"></i>
+          </div>
+          <div class="card-content">
+            <h3>{{ stats.offboardedUsers }}</h3>
+            <p>Offboarded</p>
+            <div class="card-meta">
+              <span class="meta-badge status-offboarded">
+                <i class="fas fa-circle"></i>
+                Inactive
+              </span>
+            </div>
+          </div>
         </div>
       </div>
-      
-      <div class="stat-card active">
-        <div class="stat-icon">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="stat-info">
-          <h3>{{ stats.activeUsers }}</h3>
-          <p>Completed Users</p>
-        </div>
-      </div>
-      
-      <div class="stat-card pending">
-        <div class="stat-icon">
-          <i class="fas fa-hourglass-half"></i>
-        </div>
-        <div class="stat-info">
-          <h3>{{ stats.pendingOnboarding }}</h3>
-          <p>Pending Onboarding</p>
-        </div>
-      </div>
-      
-      <div class="stat-card offboarded">
-        <div class="stat-icon">
-          <i class="fas fa-user-times"></i>
-        </div>
-        <div class="stat-info">
-          <h3>{{ stats.offboardedUsers }}</h3>
-          <p>Offboarded Users</p>
-        </div>
-      </div>
-    </div>
 
     <!-- Quick Actions -->
     <div class="content-section">
       <div class="section-header">
-        <h2>Quick Actions</h2>
+        <div class="section-title">
+          <i class="fas fa-bolt"></i>
+          <h2>Quick Actions</h2>
+        </div>
       </div>
       
       <div class="quick-actions-content">
         <div class="action-grid">
           <div class="action-card" @click="navigateTo('/onboarding')">
-            <div class="action-icon">👤➕</div>
+            <div class="action-icon">
+              <i class="fas fa-user-plus"></i>
+            </div>
             <div class="action-content">
               <h3>Onboard New User</h3>
               <p>Start the onboarding process for a new employee</p>
-              <button class="btn-primary">Get Started →</button>
+              <button class="btn-primary">Get Started <i class="fas fa-arrow-right"></i></button>
             </div>
           </div>
           
           <div class="action-card" @click="navigateTo('/print-onboarding')">
-            <div class="action-icon">🖨️</div>
+            <div class="action-icon">
+              <i class="fas fa-print"></i>
+            </div>
             <div class="action-content">
               <h3>Print Onboarding Info</h3>
               <p>Generate and print onboarding documentation</p>
-              <button class="btn-primary">Print Info →</button>
+              <button class="btn-primary">Print Info <i class="fas fa-arrow-right"></i></button>
             </div>
           </div>
           
           <div class="action-card" @click="navigateTo('/offboarding')">
-            <div class="action-icon">👤➖</div>
+            <div class="action-icon">
+              <i class="fas fa-user-minus"></i>
+            </div>
             <div class="action-content">
               <h3>Offboard User</h3>
               <p>Begin the offboarding process for departing employees</p>
-              <button class="btn-primary">Start Process →</button>
+              <button class="btn-primary">Start Process <i class="fas fa-arrow-right"></i></button>
             </div>
           </div>
           
           <div class="action-card" @click="navigateTo('/offboarded-users')">
-            <div class="action-icon">📋</div>
+            <div class="action-icon">
+              <i class="fas fa-clipboard-list"></i>
+            </div>
             <div class="action-content">
               <h3>View Offboarded Users</h3>
               <p>Review information about previously offboarded users</p>
-              <button class="btn-primary">View List →</button>
+              <button class="btn-primary">View List <i class="fas fa-arrow-right"></i></button>
             </div>
           </div>
         </div>
@@ -112,18 +172,28 @@
     <!-- Recent Activity -->
     <div class="content-section">
       <div class="section-header">
-        <h2>Recent Activity</h2>
-        <button class="btn-secondary" @click="fetchDashboardData">Refresh</button>
+        <div class="section-title">
+          <i class="fas fa-history"></i>
+          <h2>Recent Activity</h2>
+        </div>
+        <div class="header-actions">
+          <button class="btn-secondary" @click="fetchDashboardData">
+            <i class="fas fa-sync-alt"></i>
+            Refresh
+          </button>
+        </div>
       </div>
       
       <div class="activity-list">
         <div v-if="recentActivities.length === 0" class="no-activity">
-          <div class="no-activity-icon">📝</div>
+          <div class="no-activity-icon">
+            <i class="fas fa-clock"></i>
+          </div>
           <p>No recent activity to display</p>
         </div>
         <div v-else v-for="activity in recentActivities" :key="activity.id" class="activity-item">
           <div class="activity-icon" :class="[activity.type, getActivityStatusClass(activity)]">
-            {{ activity.icon }}
+            <i :class="getActivityIcon(activity)"></i>
           </div>
           <div class="activity-content">
             <div class="activity-title">{{ activity.title }}</div>
@@ -147,8 +217,9 @@ export default {
     return {
       stats: {
         totalUsers: 0,
-        activeUsers: 0,
-        pendingOnboarding: 0,
+        completedUsers: 0,
+        inProgressUsers: 0,
+        pendingUsers: 0,
         offboardedUsers: 0
       },
       recentActivities: [],
@@ -174,10 +245,11 @@ export default {
         
         // Map the backend data to frontend properties
         this.stats = {
-          totalUsers: statsData.totalUsers,
-          activeUsers: statsData.completedUsers, // Users who completed onboarding and are active (not offboarded)
-          pendingOnboarding: statsData.pendingUsers + statsData.inProgressUsers, // Combine pending and in-progress
-          offboardedUsers: statsData.offboardedUsers
+          totalUsers: statsData.totalUsers || 0,
+          completedUsers: statsData.completedUsers || 0,
+          inProgressUsers: statsData.inProgressUsers || 0,
+          pendingUsers: statsData.pendingUsers || 0,
+          offboardedUsers: statsData.offboardedUsers || 0
         }
         
         // Fetch recent activity
@@ -202,15 +274,15 @@ export default {
       // Fallback mock data for development
       this.stats = {
         totalUsers: 156,
-        activeUsers: 142,
-        pendingOnboarding: 8,
+        completedUsers: 142,
+        inProgressUsers: 6,
+        pendingUsers: 8,
         offboardedUsers: 23
       }
       this.recentActivities = [
         {
           id: 'mock-1',
           type: 'script',
-          icon: '⚙️',
           title: 'Script executed: create_user',
           description: 'JumpCloud script for John Smith',
           status: 'success',
@@ -221,7 +293,6 @@ export default {
         {
           id: 'mock-2',
           type: 'status_change',
-          icon: '✅',
           title: 'Status updated: In Progress → Completed',
           description: 'Sarah Johnson onboarding completed',
           timestamp: new Date('2025-07-30T12:15:00').toISOString(),
@@ -255,6 +326,18 @@ export default {
         return activity.status === 'success' ? 'success' : activity.status === 'failed' ? 'error' : 'warning'
       }
       return 'info'
+    },
+    
+    getActivityIcon(activity) {
+      const iconMap = {
+        script: 'fas fa-cogs',
+        status_change: 'fas fa-exchange-alt',
+        onboard: 'fas fa-user-plus',
+        offboard: 'fas fa-user-minus',
+        print: 'fas fa-print',
+        default: 'fas fa-info-circle'
+      }
+      return iconMap[activity.type] || iconMap.default
     }
   }
 }
@@ -262,7 +345,41 @@ export default {
 
 <style scoped>
 .dashboard-home {
-  padding: 0;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 25px 16px;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+.page-header {
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 20px 24px;
+  color: white;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+}
+
+.header-content h1 {
+  margin: 0 0 8px 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-content h1 i {
+  font-size: 1.5rem;
+  opacity: 0.9;
+}
+
+.header-content p {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+  font-weight: 300;
 }
 
 /* Loading and Error States */
@@ -327,185 +444,328 @@ export default {
   cursor: pointer;
   font-size: 0.8rem;
   margin-left: auto;
+  transition: background-color 0.3s ease;
 }
 
 .retry-button:hover {
   background: #b91c1c;
 }
 
+/* Stats Grid - Match SettingsView nav-card styling */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
 }
 
 .stat-card {
-  background: rgb(236, 236, 236);
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
-  gap: 15px;
-  border-left: 4px solid #667eea;
+  gap: 12px;
+  min-height: 80px;
 }
 
-.stat-card.active {
-  border-left-color: #16a34a;
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
 }
 
-.stat-card.pending {
-  border-left-color: #d97706;
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  border-color: #667eea;
 }
 
-.stat-card.offboarded {
-  border-left-color: #dc2626;
+.stat-card:hover::before {
+  transform: scaleX(1);
 }
 
-.stat-icon {
-  font-size: 2rem;
-  opacity: 0.8;
-  color: #667eea;
-  width: 50px;
-  height: 50px;
+.card-icon {
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(102, 126, 234, 0.1);
-  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
-.stat-card.active .stat-icon {
-  color: #16a34a;
-  background: rgba(22, 163, 74, 0.1);
+.card-icon.completed {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
 }
 
-.stat-card.pending .stat-icon {
-  color: #d97706;
-  background: rgba(217, 119, 6, 0.1);
+.card-icon.in-progress {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
 }
 
-.stat-card.offboarded .stat-icon {
-  color: #dc2626;
-  background: rgba(220, 38, 38, 0.1);
+.card-icon.pending {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
-.stat-info h3 {
-  margin: 0;
-  font-size: 2rem;
+.card-icon.offboarded {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+.card-icon i {
+  font-size: 1.1rem;
+  color: white;
+}
+
+.card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-content h3 {
+  margin: 0 0 4px 0;
+  color: #1a202c;
+  font-size: 1.8rem;
   font-weight: 700;
-  color: #1f2937;
+  line-height: 1.2;
 }
 
-.stat-info p {
-  margin: 5px 0 0 0;
-  color: #6b7280;
+.card-content p {
+  margin: 0 0 8px 0;
+  color: #718096;
   font-size: 0.9rem;
+  line-height: 1.3;
+  font-weight: 500;
 }
 
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #667eea;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.meta-badge.status-completed {
+  background: #16a34a;
+}
+
+.meta-badge.status-progress {
+  background: #f59e0b;
+}
+
+.meta-badge.status-pending {
+  background: #3b82f6;
+}
+
+.meta-badge.status-offboarded {
+  background: #dc2626;
+}
+
+.meta-badge i {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Content Sections */
 .content-section {
   background: white;
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  margin-bottom: 30px;
+  margin-bottom: 16px;
+  border: 1px solid #e2e8f0;
 }
 
 .section-header {
-  padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.section-header h2 {
-  margin: 0;
-  color: #1f2937;
-  font-size: 1.3rem;
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
+.section-title i {
+  font-size: 1.2rem;
+  color: #667eea;
+}
+
+.section-title h2 {
+  margin: 0;
+  color: #1a202c;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Buttons */
 .btn-primary {
-  background: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
+  padding: 10px 16px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
-  font-size: 0.9rem;
-  transition: background-color 0.3s ease;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .btn-primary:hover {
-  background: #5a67d8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
 }
 
 .btn-secondary {
-  background: #f3f4f6;
-  color: #374151;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
+  background: #edf2f7;
+  color: #4a5568;
+  border: 2px solid #e2e8f0;
+  padding: 10px 16px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
-  font-size: 0.9rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   transition: all 0.3s ease;
 }
 
 .btn-secondary:hover {
-  background: #e5e7eb;
+  background: #e2e8f0;
+  border-color: #cbd5e0;
+  transform: translateY(-1px);
 }
 
+/* Quick Actions */
 .quick-actions-content {
-  padding: 30px;
+  padding: 20px;
 }
 
 .action-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.action-card {
-  background: #f8fafc;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 24px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: flex-start;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
 }
 
+.action-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 100px;
+}
+
+.action-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
 .action-card:hover {
-  background: #f1f5f9;
-  border-color: #667eea;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  border-color: #667eea;
+}
+
+.action-card:hover::before {
+  transform: scaleX(1);
 }
 
 .action-icon {
-  font-size: 2.5rem;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  color: white;
+  font-size: 1.1rem;
+}
+
+.action-content {
+  flex: 1;
+  min-width: 0;
 }
 
 .action-content h3 {
-  margin: 0 0 8px 0;
-  color: #1f2937;
-  font-size: 1.1rem;
+  margin: 0 0 6px 0;
+  color: #1a202c;
+  font-size: 1rem;
   font-weight: 600;
+  line-height: 1.2;
 }
 
 .action-content p {
-  margin: 0 0 16px 0;
-  color: #6b7280;
-  font-size: 0.9rem;
-  line-height: 1.5;
+  margin: 0 0 12px 0;
+  color: #718096;
+  font-size: 0.8rem;
+  line-height: 1.3;
 }
 
+/* Activity List */
 .activity-list {
   padding: 0;
 }
@@ -513,14 +773,14 @@ export default {
 .activity-item {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
-  padding: 20px;
-  border-bottom: 1px solid #f3f4f6;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
   transition: background-color 0.2s ease;
 }
 
 .activity-item:hover {
-  background: #f9fafb;
+  background: #f8fafc;
 }
 
 .activity-item:last-child {
@@ -534,20 +794,28 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  font-size: 1rem;
   flex-shrink: 0;
 }
 
-.activity-icon.onboard {
-  background: #f0fdf4;
+.activity-icon.success {
+  background: #dcfce7;
+  color: #16a34a;
 }
 
-.activity-icon.offboard {
-  background: #fef2f2;
+.activity-icon.error {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
-.activity-icon.print {
-  background: #eff6ff;
+.activity-icon.warning {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.activity-icon.info {
+  background: #dbeafe;
+  color: #2563eb;
 }
 
 .activity-content {
@@ -556,21 +824,23 @@ export default {
 
 .activity-title {
   font-weight: 600;
-  color: #1f2937;
+  color: #1a202c;
   margin-bottom: 4px;
+  font-size: 0.9rem;
 }
 
 .activity-description {
   color: #6b7280;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   margin-bottom: 8px;
+  line-height: 1.4;
 }
 
 .activity-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 .activity-user {
@@ -589,7 +859,78 @@ export default {
 }
 
 .no-activity-icon {
-  font-size: 2rem;
+  font-size: 2.5rem;
   margin-bottom: 12px;
+  color: #94a3b8;
+}
+
+.no-activity p {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+  
+  .action-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-home {
+    padding: 12px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .action-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .page-header {
+    padding: 16px 20px;
+  }
+  
+  .header-content h1 {
+    font-size: 1.5rem;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .header-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .stat-card,
+  .action-card {
+    min-height: 70px;
+    padding: 12px;
+  }
+  
+  .card-icon,
+  .action-icon {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .card-content h3 {
+    font-size: 1.5rem;
+  }
+  
+  .card-content p {
+    font-size: 0.8rem;
+  }
 }
 </style>
