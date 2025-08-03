@@ -1,51 +1,70 @@
 <template>
   <div class="settings-page">
     <div class="page-header">
-      <h1>Admin Settings</h1>
-      <p>Configure system settings and organizational preferences</p>
+      <div class="header-content">
+        <h1><i class="fas fa-cog"></i> Admin Settings</h1>
+        <p>Configure system settings and organizational preferences</p>
+      </div>
     </div>
 
-    <!-- Settings Tiles Grid -->
-    <div class="settings-tiles">
-      <!-- Department OU Mappings Tile -->
-      <div class="settings-tile" :class="{ 'active': activeTile === 'departments' }" @click="setActiveTile('departments')">
-        <div class="tile-icon">🏢</div>
-        <div class="tile-content">
-          <h3>Department OU Mappings</h3>
-          <p>Manage department to organizational unit mappings</p>
-          <span class="tile-count">{{ departmentMappings.length }} departments</span>
+    <!-- Settings Navigation Cards -->
+    <div class="settings-navigation">
+      <!-- Department OU Mappings Card -->
+      <div class="nav-card" :class="{ 'active': activeTile === 'departments' }" @click="setActiveTile('departments')">
+        <div class="card-icon">
+          <i class="fas fa-building"></i>
+        </div>
+        <div class="card-content">
+          <h3>Department Mappings</h3>
+          <p>Organizational unit configurations</p>
+          <div class="card-meta">
+            <span class="meta-badge">{{ departmentMappings.length }} departments</span>
+          </div>
         </div>
       </div>
 
-      <!-- User Settings Tile -->
-      <div class="settings-tile" :class="{ 'active': activeTile === 'users' }" @click="setActiveTile('users')">
-        <div class="tile-icon">👥</div>
-        <div class="tile-content">
-          <h3>User Settings</h3>
-          <p>Configure default user settings and preferences</p>
-          <span class="tile-count">Coming Soon</span>
+      <!-- User Settings Card -->
+      <div class="nav-card" :class="{ 'active': activeTile === 'users' }" @click="setActiveTile('users')">
+        <div class="card-icon">
+          <i class="fas fa-users"></i>
+        </div>
+        <div class="card-content">
+          <h3>User Management</h3>
+          <p>Default settings and preferences</p>
+          <div class="card-meta">
+            <!-- <span class="meta-badge coming-soon">Coming Soon</span> -->
+          </div>
         </div>
       </div>
 
-      <!-- Sync Management Tile -->
-      <div class="settings-tile" :class="{ 'active': activeTile === 'sync' }" @click="setActiveTile('sync')">
-        <div class="tile-icon">�</div>
-        <div class="tile-content">
+      <!-- Sync Management Card -->
+      <div class="nav-card" :class="{ 'active': activeTile === 'sync' }" @click="setActiveTile('sync')">
+        <div class="card-icon">
+          <i class="fas fa-sync-alt"></i>
+        </div>
+        <div class="card-content">
           <h3>Sync Management</h3>
-          <p>Manage Freshservice onboarding sync and automation</p>
-          <span class="tile-count" :class="{ 'sync-active': syncStatus.running }">
-            {{ syncStatus.running ? 'Active' : 'Stopped' }}
-          </span>
+          <p>Freshservice integration & automation</p>
+          <div class="card-meta">
+            <span class="meta-badge" :class="{ 'status-active': syncStatus.running, 'status-stopped': !syncStatus.running }">
+              <i class="fas fa-circle"></i>
+              {{ syncStatus.running ? 'Active' : 'Stopped' }}
+            </span>
+          </div>
         </div>
       </div>
 
-      <!-- System Settings Tile -->
-      <div class="settings-tile" :class="{ 'active': activeTile === 'system' }" @click="setActiveTile('system')">
-        <div class="tile-icon">⚙️</div>
-        <div class="tile-content">
+      <!-- System Settings Card -->
+      <div class="nav-card" :class="{ 'active': activeTile === 'system' }" @click="setActiveTile('system')">
+        <div class="card-icon">
+          <i class="fas fa-server"></i>
+        </div>
+        <div class="card-content">
           <h3>System Settings</h3>
-          <p>Configure system-wide settings and preferences</p>
-          <span class="tile-count">Coming Soon</span>
+          <p>Global configuration options</p>
+          <div class="card-meta">
+            <!-- <span class="meta-badge coming-soon">Coming Soon</span> -->
+          </div>
         </div>
       </div>
     </div>
@@ -53,22 +72,34 @@
     <!-- Department OU Mappings Section -->
     <div v-if="activeTile === 'departments'" class="content-section">
       <div class="section-header">
-        <h2>Department OU Mappings</h2>
+        <div class="section-title">
+          <i class="fas fa-building"></i>
+          <h2>Department OU Mappings</h2>
+        </div>
         <div class="header-actions">
-          <button class="btn-outline" @click="addDepartment">➕ Add Department</button>
-          <button class="btn-primary" @click="saveMappings">💾 Save Changes</button>
+          <button class="btn-outline" @click="addDepartment">
+            <i class="fas fa-plus"></i> Add Department
+          </button>
+          <button class="btn-primary" @click="saveMappings">
+            <i class="fas fa-save"></i> Save Changes
+          </button>
         </div>
       </div>
       
       <div class="settings-content">
         <div class="search-filter">
-          <input 
-            type="text" 
-            v-model="searchQuery" 
-            placeholder="Search departments..." 
-            class="search-input"
-          >
-          <button class="btn-secondary" @click="resetToDefaults">🔄 Reset to Defaults</button>
+          <div class="search-input-wrapper">
+            <i class="fas fa-search"></i>
+            <input 
+              type="text" 
+              v-model="searchQuery" 
+              placeholder="Search departments..." 
+              class="search-input"
+            >
+          </div>
+          <button class="btn-secondary" @click="resetToDefaults">
+            <i class="fas fa-undo"></i> Reset to Defaults
+          </button>
         </div>
         
         <div class="department-list">
@@ -109,12 +140,20 @@
             
             <div class="col-actions">
               <div v-if="mapping.isEditing" class="edit-actions">
-                <button class="btn-save" @click="saveMapping(index)" title="Save">✅</button>
-                <button class="btn-cancel" @click="cancelEdit(index)" title="Cancel">❌</button>
+                <button class="btn-save" @click="saveMapping(index)" title="Save">
+                  <i class="fas fa-check"></i>
+                </button>
+                <button class="btn-cancel" @click="cancelEdit(index)" title="Cancel">
+                  <i class="fas fa-times"></i>
+                </button>
               </div>
               <div v-else class="view-actions">
-                <button class="btn-edit" @click="editMapping(index)" title="Edit">✏️</button>
-                <button class="btn-delete" @click="deleteMapping(index)" title="Delete">🗑️</button>
+                <button class="btn-edit" @click="editMapping(index)" title="Edit">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-delete" @click="deleteMapping(index)" title="Delete">
+                  <i class="fas fa-trash"></i>
+                </button>
               </div>
             </div>
           </div>
@@ -129,13 +168,18 @@
     <!-- System Information Section -->
     <div v-if="activeTile === 'departments'" class="content-section">
       <div class="section-header">
-        <h2>System Information</h2>
+        <div class="section-title">
+          <i class="fas fa-chart-bar"></i>
+          <h2>System Information</h2>
+        </div>
       </div>
       
       <div class="settings-content">
         <div class="info-grid">
           <div class="info-card">
-            <div class="info-icon">📊</div>
+            <div class="info-icon">
+              <i class="fas fa-building"></i>
+            </div>
             <div class="info-content">
               <h3>Total Departments</h3>
               <p class="info-value">{{ departmentMappings.length }}</p>
@@ -143,7 +187,9 @@
           </div>
           
           <div class="info-card">
-            <div class="info-icon">🏢</div>
+            <div class="info-icon">
+              <i class="fas fa-sitemap"></i>
+            </div>
             <div class="info-content">
               <h3>Active OUs</h3>
               <p class="info-value">{{ uniqueOUs.length }}</p>
@@ -151,7 +197,9 @@
           </div>
           
           <div class="info-card">
-            <div class="info-icon">⚙️</div>
+            <div class="info-icon">
+              <i class="fas fa-clock"></i>
+            </div>
             <div class="info-content">
               <h3>Last Updated</h3>
               <p class="info-value">{{ lastUpdated }}</p>
@@ -164,15 +212,21 @@
     <!-- Sync Management Section -->
     <div v-if="activeTile === 'sync'" class="content-section">
       <div class="section-header">
-        <h2>Freshservice Sync Management</h2>
+        <div class="section-title">
+          <i class="fas fa-sync-alt"></i>
+          <h2>Freshservice Sync Management</h2>
+        </div>
         <div class="header-actions">
-          <button class="btn-outline" @click="refreshSyncStatus">🔄 Refresh Status</button>
+          <button class="btn-outline" @click="refreshSyncStatus">
+            <i class="fas fa-refresh"></i> Refresh Status
+          </button>
           <button 
             class="btn-primary" 
             @click="triggerManualSync"
             :disabled="isManualSyncRunning"
           >
-            {{ isManualSyncRunning ? '⏳ Syncing...' : '🚀 Manual Sync' }}
+            <i class="fas" :class="isManualSyncRunning ? 'fa-spinner fa-spin' : 'fa-play'"></i>
+            {{ isManualSyncRunning ? 'Syncing...' : 'Manual Sync' }}
           </button>
         </div>
       </div>
@@ -181,31 +235,49 @@
         <!-- Sync Status Cards -->
         <div class="sync-status-grid">
           <div class="status-card">
-            <div class="status-icon" :class="{ 'active': syncStatus.running }">
-              {{ syncStatus.running ? '🟢' : '🔴' }}
+            <div class="status-icon" :class="{ 'active': syncStatus.running, 'warning': syncStatus.failures > 0 }">
+              <i class="fas" :class="syncStatus.running ? (syncStatus.failures > 0 ? 'fa-exclamation-triangle' : 'fa-check-circle') : 'fa-times-circle'"></i>
             </div>
             <div class="status-content">
               <h3>Automated Sync</h3>
-              <p>{{ syncStatus.running ? 'Running every hour' : 'Currently stopped' }}</p>
+              <p>{{ syncStatus.running ? 'Running every 5 min + hourly' : 'Currently stopped' }}</p>
               <small v-if="syncStatus.nextRun">Next run: {{ formatDateTime(syncStatus.nextRun) }}</small>
+              <small v-if="syncStatus.failures > 0" class="warning-text">{{ syncStatus.failures }} consecutive failures</small>
             </div>
           </div>
           
           <div class="status-card">
-            <div class="status-icon">📊</div>
+            <div class="status-icon">
+              <i class="fas fa-tasks"></i>
+            </div>
             <div class="status-content">
-              <h3>Total Jobs</h3>
-              <p>{{ syncStatus.totalJobs || 0 }} scheduled tasks</p>
-              <small>Background processes</small>
+              <h3>Scheduler Jobs</h3>
+              <p>{{ syncStatus.totalJobs || 0 }} active tasks</p>
+              <small>5min sync, hourly sync, heartbeat</small>
             </div>
           </div>
           
           <div class="status-card">
-            <div class="status-icon">⏰</div>
+            <div class="status-icon">
+              <i class="fas fa-clock"></i>
+            </div>
             <div class="status-content">
-              <h3>Last Manual Sync</h3>
+              <h3>Last Successful Sync</h3>
+              <p v-if="syncStatus.lastSuccess">{{ formatDateTime(syncStatus.lastSuccess) }}</p>
+              <p v-else-if="syncStatus.lastAttempt">{{ formatDateTime(syncStatus.lastAttempt) }} (failed)</p>
+              <p v-else>No sync attempts yet</p>
+              <small v-if="syncStatus.lastSuccess">Automated sync working</small>
+            </div>
+          </div>
+          
+          <div class="status-card">
+            <div class="status-icon">
+              <i class="fas fa-hand-paper"></i>
+            </div>
+            <div class="status-content">
+              <h3>Manual Sync</h3>
               <p v-if="lastManualSync.timestamp">{{ formatDateTime(lastManualSync.timestamp) }}</p>
-              <p v-else>Never run</p>
+              <p v-else>Never run manually</p>
               <small v-if="lastManualSync.result">{{ lastManualSync.result.users_created }} users created</small>
             </div>
           </div>
@@ -214,8 +286,13 @@
         <!-- Manual Sync Results -->
         <div v-if="manualSyncResult" class="sync-result-card" :class="{ 'success': manualSyncResult.success, 'error': !manualSyncResult.success }">
           <div class="result-header">
-            <h3>{{ manualSyncResult.success ? '✅ Sync Completed' : '❌ Sync Failed' }}</h3>
-            <button @click="manualSyncResult = null" class="close-btn">×</button>
+            <h3>
+              <i class="fas" :class="manualSyncResult.success ? 'fa-check-circle' : 'fa-exclamation-circle'"></i>
+              {{ manualSyncResult.success ? 'Sync Completed' : 'Sync Failed' }}
+            </h3>
+            <button @click="manualSyncResult = null" class="close-btn">
+              <i class="fas fa-times"></i>
+            </button>
           </div>
           <div class="result-content">
             <p>{{ manualSyncResult.message }}</p>
@@ -253,116 +330,90 @@
         
         <!-- Sync Configuration -->
         <div class="config-section">
-          <h3>📋 Sync Configuration</h3>
+          <h3><i class="fas fa-cogs"></i> Sync Configuration</h3>
           <div class="config-grid">
             <div class="config-item">
-              <label>Sync Frequency</label>
+              <label><i class="fas fa-clock"></i> Sync Frequency</label>
               <p>Every hour (automated)</p>
             </div>
             <div class="config-item">
-              <label>Ticket Filter</label>
+              <label><i class="fas fa-filter"></i> Ticket Filter</label>
               <p>Subject starts with "NEW ONBOARDING"</p>
             </div>
             <div class="config-item">
-              <label>Time Window</label>
+              <label><i class="fas fa-calendar"></i> Time Window</label>
               <p>Last 24 hours</p>
             </div>
             <div class="config-item">
-              <label>Source System</label>
+              <label><i class="fas fa-database"></i> Source System</label>
               <p>Freshservice API</p>
             </div>
           </div>
         </div>
 
-        <!-- Freshservice Sync Logs -->
+        <!-- Sync Logs Section -->
         <div class="config-section">
           <div class="logs-header">
-            <h3>� Recent Sync Activity</h3>
-            <span class="logs-subtitle">Last 5 runs ({{ syncLogs.length }} found)</span>
+            <h3><i class="fas fa-list-alt"></i> Recent Sync Activity</h3>
+            <div class="logs-actions">
+              <span class="logs-subtitle">{{ syncLogs.length }} sync records</span>
+              <button class="btn-outline" @click="fetchSyncLogs">� Refresh Logs</button>
+            </div>
           </div>
           
           <div v-if="syncLogs.length === 0" class="empty-state">
-            <div class="empty-icon">📝</div>
+            <div class="empty-icon">
+              <i class="fas fa-clipboard-list"></i>
+            </div>
             <p>No sync history available</p>
             <small>Automated syncs run hourly</small>
           </div>
           
-          <div v-else class="logs-table">
-            <div class="table-header">
+          <!-- Scrollable logs container -->
+          <div v-else class="sync-logs-container">
+            <div class="logs-table-header">
               <div class="col-status">Status</div>
-              <div class="col-time">When</div>
-              <div class="col-duration">Duration</div>
+              <div class="col-time">Time</div>
               <div class="col-trigger">Trigger</div>
-              <div class="col-actions">Details</div>
+              <div class="col-metrics">Results</div>
+              <div class="col-duration">Duration</div>
             </div>
             
-            <template v-for="(log, index) in syncLogs" :key="index">
-              <div v-if="log"
-                   class="table-row"
-                   :class="{ 'has-details': log.output || log.error }"
-              >
+            <div class="logs-table-body">
+              <div v-for="(log, index) in syncLogs" :key="index" class="log-row">
                 <div class="col-status">
-                  <div class="status-badge" :class="log.success ? 'success' : 'error'">
-                    <span class="status-dot"></span>
-                    {{ log.success ? 'Success' : 'Failed' }}
-                  </div>
-                </div>
-              
-              <div class="col-time">
-                <div class="time-primary">{{ formatTime(log.executed_at) }}</div>
-                <div class="time-secondary">{{ formatDate(log.executed_at) }}</div>
-              </div>
-              
-              <div class="col-duration">
-                <span v-if="log.execution_time" class="duration-text">
-                  {{ log.execution_time }}s
-                </span>
-                <span v-else class="duration-text muted">—</span>
-              </div>
-              
-              <div class="col-trigger">
-                <div class="trigger-type">
-                  {{ log.executed_by === 'Automated Scheduler' ? 'Auto' : 'Manual' }}
-                </div>
-              </div>
-              
-              <div class="col-actions">
-                <button 
-                  v-if="log.output || log.error"
-                  @click="toggleSyncLogExpanded(index)"
-                  class="details-btn"
-                  :class="{ 'active': log.expanded }"
-                >
-                  <span class="btn-icon">{{ log.expanded ? '↑' : '↓' }}</span>
-                  Details
-                </button>
-                <span v-else class="no-details">—</span>
-              </div>
-              </div>
-            </template>
-            
-            <!-- Expandable details row -->
-            <template v-for="(log, index) in syncLogs" :key="`details-${index}`">
-              <div v-if="log && log.expanded && (log.output || log.error)"
-                   class="details-row"
-              >
-              <div class="details-content">
-                <div v-if="log.output" class="output-section">
-                  <div class="output-header">
-                    <span class="output-label">📋 Output</span>
-                  </div>
-                  <div class="output-content">{{ log.output }}</div>
+                  <span class="status-badge" :class="log.status === 'success' ? 'success' : 'failed'">
+                    <i class="fas" :class="log.status === 'success' ? 'fa-check-circle' : 'fa-times-circle'"></i>
+                  </span>
                 </div>
                 
-                <div v-if="log.error" class="error-section">
-                  <div class="error-header">
-                    <span class="error-label">⚠️ Error</span>
+                <div class="col-time">
+                  <div class="time-display">
+                    {{ formatDateTime(log.executed_at) }}
                   </div>
-                  <div class="error-content">{{ log.error }}</div>
+                </div>
+                
+                <div class="col-trigger">
+                  <span class="trigger-badge" :class="log.triggered_by === 'scheduler' ? 'auto' : 'manual'">
+                    <i class="fas" :class="log.triggered_by === 'scheduler' ? 'fa-robot' : 'fa-user'"></i>
+                    {{ log.triggered_by === 'scheduler' ? ' Auto' : ' Manual' }}
+                  </span>
+                </div>
+                
+                <div class="col-metrics">
+                  <div class="metrics-display">
+                    <span v-if="log.tickets_processed">{{ log.tickets_processed }} tickets</span>
+                    <span v-if="log.users_created">{{ log.users_created }} users</span>
+                    <span v-if="log.users_skipped">{{ log.users_skipped }} skipped</span>
+                  </div>
+                </div>
+                
+                <div class="col-duration">
+                  <span v-if="log.execution_time">{{ log.execution_time }}s</span>
+                  <span v-else>—</span>
                 </div>
               </div>
-              </div>
-            </template>
+            </div>
           </div>
         </div>
       </div>
@@ -371,12 +422,17 @@
     <!-- Placeholder for other settings tiles -->
     <div v-if="activeTile !== 'departments' && activeTile !== 'sync'" class="content-section">
       <div class="section-header">
-        <h2>{{ getActiveTileTitle() }}</h2>
+        <div class="section-title">
+          <i class="fas fa-tools"></i>
+          <h2>{{ getActiveTileTitle() }}</h2>
+        </div>
       </div>
       
       <div class="settings-content">
         <div class="coming-soon">
-          <div class="coming-soon-icon">🚧</div>
+          <div class="coming-soon-icon">
+            <i class="fas fa-hammer"></i>
+          </div>
           <h3>Coming Soon</h3>
           <p>This settings section is currently under development and will be available in a future update.</p>
         </div>
@@ -544,16 +600,42 @@ export default {
     // Sync Management Methods
     async refreshSyncStatus() {
       try {
-        const response = await fetch('/api/v1/admin/scheduler/status')
+        const response = await fetch('/api/v1/dashboard/scheduler-status')
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
         const data = await response.json()
         
-        this.syncStatus = {
-          running: data.scheduler_running || false,
-          nextRun: data.next_freshservice_sync || null,
-          totalJobs: data.total_scheduled_jobs || 0
+        if (data.success && data.status) {
+          this.syncStatus = {
+            running: data.status.running || false,
+            nextRun: data.status.next_sync_time || null,
+            totalJobs: data.status.jobs_count || 0,
+            lastAttempt: data.status.last_sync_attempt || null,
+            lastSuccess: data.status.last_sync_success || null,
+            failures: data.status.consecutive_failures || 0
+          }
+        } else {
+          console.warn('Scheduler status unavailable:', data)
+          this.syncStatus = {
+            running: false,
+            nextRun: null,
+            totalJobs: 0,
+            lastAttempt: null,
+            lastSuccess: null,
+            failures: 0
+          }
         }
       } catch (error) {
         console.error('Error fetching sync status:', error)
+        this.syncStatus = {
+          running: false,
+          nextRun: null,
+          totalJobs: 0,
+          lastAttempt: null,
+          lastSuccess: null,
+          failures: 0
+        }
       }
     },
     
@@ -571,6 +653,10 @@ export default {
           }
         })
         
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+        
         const data = await response.json()
         
         this.manualSyncResult = data
@@ -580,6 +666,9 @@ export default {
             timestamp: new Date().toISOString(),
             result: data.result
           }
+          
+          // Refresh logs to show the new manual sync
+          await this.fetchSyncLogs()
         }
         
         // Refresh sync status after manual sync
@@ -626,26 +715,37 @@ export default {
 
     async fetchSyncLogs() {
       try {
-        const response = await fetch('/api/v1/admin/sync/freshservice/history')
+        // Fetch from dedicated sync_logs table
+        const response = await fetch('/api/v1/admin/sync/logs?limit=50')
         if (response.ok) {
           const data = await response.json()
-          const logs = data.history || []
+          console.log('Sync logs API response:', data)
           
-          // Transform backend logs to match frontend format and get last 5
-          this.syncLogs = logs.slice(0, 5).map((log) => ({
-            success: log.status === 'success',
-            sync_type: 'Freshservice Onboarding Sync',
-            executed_at: log.started_at || new Date().toISOString(),
-            executed_by: log.executed_by === 'system_scheduler' ? 'Automated Scheduler' : (log.executed_by || 'Unknown'),
-            execution_time: log.execution_time_seconds || null,
-            output: log.output || '',
-            error: log.error_message || '',
-            expanded: false
-          }))
-          
-          console.log('Sync logs loaded:', this.syncLogs.length)
+          if (data.success && data.logs) {
+            // Transform to frontend format
+            this.syncLogs = data.logs.map((log) => ({
+              success: log.status === 'success',
+              sync_type: log.sync_source || 'Freshservice Onboarding Sync',
+              executed_at: log.started_at || new Date().toISOString(),
+              executed_by: log.triggered_by || 'Unknown',
+              execution_time: log.execution_time_seconds || null,
+              output: log.output_message || '',
+              error: log.error_message || '',
+              expanded: false,
+              log_id: log.id,
+              status: log.status,
+              tickets_processed: log.tickets_processed || 0,
+              users_created: log.users_created || 0,
+              users_skipped: log.users_skipped || 0,
+              triggered_by: log.triggered_by === 'Automated Scheduler' ? 'scheduler' : 'manual'
+            }))
+            console.log('Sync logs loaded successfully:', this.syncLogs.length, 'records')
+          } else {
+            console.error('API returned no logs or error:', data)
+            this.syncLogs = []
+          }
         } else {
-          console.error('Failed to fetch sync logs:', response.status)
+          console.error('Failed to fetch sync logs - HTTP status:', response.status)
           this.syncLogs = []
         }
       } catch (error) {
@@ -674,168 +774,251 @@ export default {
 
 <style scoped>
 .settings-page {
-  padding: 0;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px;
+  background: #f8fafc;
+  min-height: 100vh;
 }
 
 .page-header {
-  margin-bottom: 30px;
-}
-
-.page-header h1 {
-  margin: 0 0 8px 0;
-  color: #1f2937;
-  font-size: 2rem;
-  font-weight: 600;
-}
-
-.page-header p {
-  margin: 0;
-  color: #6b7280;
-  font-size: 1rem;
-}
-
-/* Settings Tiles */
-.settings-tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.settings-tile {
-  background: white;
-  border: 2px solid #e5e7eb;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 12px;
-  padding: 24px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.settings-tile:hover {
-  border-color: #667eea;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-  transform: translateY(-2px);
-}
-
-.settings-tile.active {
-  border-color: #667eea;
-  background: #f8faff;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-}
-
-.tile-icon {
-  font-size: 2.5rem;
-  flex-shrink: 0;
-  margin-top: 4px;
-}
-
-.tile-content {
-  flex: 1;
-}
-
-.tile-content h3 {
-  margin: 0 0 8px 0;
-  color: #1f2937;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.tile-content p {
-  margin: 0 0 12px 0;
-  color: #6b7280;
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-.tile-count {
-  display: inline-block;
-  background: #667eea;
+  padding: 10px 24px;
   color: white;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
 }
 
-.settings-tile.active .tile-count {
-  background: #5a67d8;
+.header-content h1 {
+  margin: 0 0 6px 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-/* Coming Soon Placeholder */
-.coming-soon {
-  text-align: center;
-  padding: 60px 40px;
-  color: #6b7280;
+.header-content h1 i {
+  font-size: 1.5rem;
+  opacity: 0.9;
 }
 
-.coming-soon-icon {
-  font-size: 4rem;
+.header-content p {
+  margin: 0;
+  font-size: 0.7rem;
+  opacity: 0.9;
+  font-weight: 200;
+}
+
+/* Modern Navigation Cards */
+.settings-navigation {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
   margin-bottom: 20px;
 }
 
-.coming-soon h3 {
-  margin: 0 0 12px 0;
-  color: #374151;
-  font-size: 1.5rem;
-  font-weight: 600;
+.nav-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 80px;
 }
 
-.coming-soon p {
-  margin: 0;
+.nav-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.nav-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  border-color: #667eea;
+}
+
+.nav-card:hover::before {
+  transform: scaleX(1);
+}
+
+.nav-card.active {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
+}
+
+.nav-card.active::before {
+  transform: scaleX(1);
+}
+
+.card-icon {
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.card-icon i {
+  font-size: 1.1rem;
+  color: white;
+}
+
+.card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-content h3 {
+  margin: 0 0 4px 0;
+  color: #1a202c;
   font-size: 1rem;
-  line-height: 1.6;
-  max-width: 400px;
-  margin: 0 auto;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
+.card-content p {
+  margin: 0 0 8px 0;
+  color: #718096;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #667eea;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.meta-badge.coming-soon {
+  background: #a0aec0;
+}
+
+.meta-badge.status-active {
+  background: #48bb78;
+}
+
+.meta-badge.status-active i {
+  animation: pulse 2s infinite;
+}
+
+.meta-badge.status-stopped {
+  background: #f56565;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Content Sections */
 .content-section {
   background: white;
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+  border: 1px solid #e2e8f0;
 }
 
 .section-header {
-  padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.section-header h2 {
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title i {
+  font-size: 1.2rem;
+  color: #667eea;
+}
+
+.section-title h2 {
   margin: 0;
-  color: #1f2937;
-  font-size: 1.3rem;
+  color: #1a202c;
+  font-size: 1.2rem;
+  font-weight: 600;
 }
 
 .header-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .settings-content {
-  padding: 30px;
+  padding: 20px;
 }
 
-/* Search and Filter */
+/* Search Filter */
 .search-filter {
   display: flex;
-  gap: 16px;
-  margin-bottom: 30px;
+  gap: 12px;
+  margin-bottom: 20px;
   align-items: center;
 }
 
-.search-input {
+.search-input-wrapper {
+  position: relative;
   flex: 1;
-  padding: 12px 16px;
-  border: 1px solid #d1d5db;
+}
+
+.search-input-wrapper i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #a0aec0;
+  font-size: 0.85rem;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 12px 10px 36px;
+  border: 2px solid #e2e8f0;
   border-radius: 8px;
   font-size: 0.9rem;
+  transition: all 0.3s ease;
+  background: white;
 }
 
 .search-input:focus {
@@ -844,42 +1027,114 @@ export default {
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-/* Department List */
+/* Modern Buttons */
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-outline {
+  background: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
+
+.btn-outline:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+}
+
+.btn-secondary {
+  background: #edf2f7;
+  color: #4a5568;
+  border: 2px solid #e2e8f0;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e0;
+  transform: translateY(-1px);
+}
+
+/* Department List Styling */
 .department-list {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   overflow: hidden;
+  background: white;
 }
 
 .list-header {
   display: grid;
   grid-template-columns: 1fr 2fr 120px;
-  gap: 20px;
-  padding: 16px 20px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  gap: 16px;
+  padding: 12px 16px;
+  background: #f7fafc;
+  border-bottom: 2px solid #e2e8f0;
   font-weight: 600;
-  color: #374151;
-  font-size: 0.9rem;
+  color: #4a5568;
+  font-size: 0.85rem;
 }
 
 .department-row {
   display: grid;
   grid-template-columns: 1fr 2fr 120px;
-  gap: 20px;
-  padding: 16px 20px;
-  border-bottom: 1px solid #f3f4f6;
+  gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
   align-items: center;
   transition: background-color 0.2s ease;
 }
 
 .department-row:hover {
-  background: #f9fafb;
+  background: #f8fafc;
 }
 
 .department-row.editing {
-  background: #eff6ff;
-  border-color: #dbeafe;
+  background: #eef6ff;
+  border-color: #bee3f8;
 }
 
 .department-row:last-child {
@@ -887,34 +1142,33 @@ export default {
 }
 
 .col-department {
-  font-weight: 500;
-  color: #1f2937;
-}
-
-.col-ou {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-weight: 600;
+  color: #1a202c;
+  font-size: 0.9rem;
 }
 
 .ou-path {
-  background: #f3f4f6;
+  background: #edf2f7;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 0.8rem;
-  color: #374151;
+  color: #4a5568;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
 }
 
 .edit-input {
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  padding: 8px 10px;
+  border: 2px solid #e2e8f0;
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  transition: border-color 0.3s ease;
 }
 
 .edit-input:focus {
   outline: none;
   border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 /* Action Buttons */
@@ -936,137 +1190,526 @@ export default {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 6px 8px;
-  border-radius: 4px;
+  padding: 8px;
+  border-radius: 6px;
   font-size: 0.9rem;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-edit {
+  color: #667eea;
+  background: #eef6ff;
 }
 
 .btn-edit:hover {
-  background: #f3f4f6;
+  background: #bee3f8;
+}
+
+.btn-delete {
+  color: #f56565;
+  background: #fed7d7;
 }
 
 .btn-delete:hover {
-  background: #fee2e2;
+  background: #feb2b2;
+}
+
+.btn-save {
+  color: #48bb78;
+  background: #c6f6d5;
 }
 
 .btn-save:hover {
-  background: #dcfce7;
+  background: #9ae6b4;
+}
+
+.btn-cancel {
+  color: #f56565;
+  background: #fed7d7;
 }
 
 .btn-cancel:hover {
-  background: #fee2e2;
+  background: #feb2b2;
 }
 
-/* No Results */
-.no-results {
-  padding: 40px;
-  text-align: center;
-  color: #6b7280;
-}
-
-.no-results p {
-  margin: 0;
-  font-style: italic;
-}
-
-/* Info Grid */
+/* Info Cards */
 .info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-}
-
-.info-card {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
   gap: 16px;
 }
 
+.info-card {
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
 .info-icon {
-  font-size: 2rem;
-  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.1rem;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .info-content h3 {
-  margin: 0 0 4px 0;
-  color: #1f2937;
-  font-size: 0.9rem;
-  font-weight: 500;
+  margin: 0 0 2px 0;
+  color: #4a5568;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .info-value {
   margin: 0;
-  color: #667eea;
-  font-size: 1.5rem;
+  color: #1a202c;
+  font-size: 1.4rem;
   font-weight: 700;
 }
 
-/* Button Styles */
-.btn-primary {
-  background: #667eea;
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background-color 0.3s ease;
+/* Sync Status Cards */
+.sync-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
 }
 
-.btn-primary:hover {
-  background: #5a67d8;
-}
-
-.btn-secondary {
-  background: #f3f4f6;
-  color: #374151;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
+.status-card {
+  background: rgb(219, 219, 219);
+  border: 1px solid #accefb;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.btn-secondary:hover {
-  background: #e5e7eb;
+.status-card:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
 
-.btn-outline {
+.status-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.status-icon.active {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.status-icon.warning {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status-content h3 {
+  margin: 0 0 3px 0;
+  color: #1a202c;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.status-content p {
+  margin: 0 0 3px 0;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.status-content small {
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.status-content small.warning-text {
+  color: #d97706;
+  font-weight: 500;
+}
+
+/* Sync Result Card */
+.sync-result-card {
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.sync-result-card.success {
+  background: linear-gradient(135deg, #f0fff4 0%, #dcfce7 100%);
+  border-color: #16a34a;
+}
+
+.sync-result-card.error {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-color: #dc2626;
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.result-header h3 {
+  margin: 0;
+  color: #1a202c;
+  font-size: 1.2rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #64748b;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  color: #1a202c;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Config Section */
+.config-section {
   background: white;
-  color: #667eea;
-  border: 1px solid #667eea;
-  padding: 12px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.btn-outline:hover {
-  background: #667eea;
-  color: white;
+.config-section h3 {
+  margin: 0 0 16px 0;
+  color: #1a202c;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.config-section h3 i {
+  color: #667eea;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.config-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  background: #e0eefc;
+  border-radius: 8px;
+  border: 1px solid #cfcfcf;
+}
+
+.config-item label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4a5568;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.config-item label i {
+  color: #667eea;
+}
+
+.config-item p {
+  margin: 0;
+  color: #1a202c;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* Logs Styling */
+.logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.logs-header h3 {
+  margin: 0;
+  color: #1a202c;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.logs-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logs-subtitle {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 32px 20px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 2px dashed #cbd5e0;
+}
+
+.empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+  color: #94a3b8;
+}
+
+.empty-state p {
+  margin: 0 0 6px 0;
+  color: #4a5568;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.empty-state small {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+/* Sync Logs Container */
+.sync-logs-container {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  overflow: hidden;
+  margin-top: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.logs-table-header {
+  display: grid;
+  grid-template-columns: 100px 160px 120px 180px 80px;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  border-bottom: 2px solid #e2e8f0;
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.logs-table-header > div {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+}
+
+.logs-table-body {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.log-row {
+  display: grid;
+  grid-template-columns: 100px 160px 120px 180px 80px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.8rem;
+  transition: background-color 0.2s ease;
+}
+
+.log-row:hover {
+  background-color: #f8fafc;
+}
+
+.log-row:last-child {
+  border-bottom: none;
+}
+
+.log-row > div {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-badge.success {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.status-badge.failed {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.time-display {
+  font-size: 0.8rem;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.trigger-badge {
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.trigger-badge.auto {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.trigger-badge.manual {
+  background: #fed7aa;
+  color: #ea580c;
+}
+
+.metrics-display {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.metrics-display span {
+  display: block;
+  font-weight: 500;
+}
+
+/* Coming Soon */
+.coming-soon {
+  text-align: center;
+  padding: 48px 32px;
+  color: #64748b;
+}
+
+.coming-soon-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  color: #94a3b8;
+}
+
+.coming-soon h3 {
+  margin: 0 0 12px 0;
+  color: #1a202c;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.coming-soon p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-width: 400px;
+  margin: 0 auto;
 }
 
 /* Responsive Design */
+@media (max-width: 1200px) {
+  .settings-navigation {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
-  .list-header,
-  .department-row {
+  .settings-page {
+    padding: 12px;
+  }
+  
+  .settings-navigation {
     grid-template-columns: 1fr;
-    gap: 12px;
   }
   
-  .col-actions {
-    justify-content: flex-start;
+  .nav-card {
+    min-height: 70px;
+    padding: 12px;
   }
   
-  .search-filter {
+  .card-icon {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .card-content h3 {
+    font-size: 0.9rem;
+  }
+  
+  .card-content p {
+    font-size: 0.75rem;
+  }
+  
+  .page-header {
+    padding: 16px 20px;
+  }
+  
+  .header-content h1 {
+    font-size: 1.5rem;
+  }
+  
+  .section-header {
     flex-direction: column;
+    gap: 12px;
     align-items: stretch;
   }
   
@@ -1075,465 +1718,61 @@ export default {
     gap: 8px;
   }
   
+  .search-filter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .list-header,
+  .department-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .col-actions {
+    justify-content: flex-start;
+  }
+  
   .info-grid {
     grid-template-columns: 1fr;
   }
-}
-
-/* Sync Management Styles */
-.sync-active {
-  background: #10b981 !important;
-  color: white !important;
-}
-
-.sync-status-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.status-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  transition: all 0.3s ease;
-}
-
-.status-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.status-icon {
-  font-size: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: #f3f4f6;
-}
-
-.status-icon.active {
-  background: #d1fae5;
-}
-
-.status-content h3 {
-  margin: 0 0 4px 0;
-  color: #1f2937;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.status-content p {
-  margin: 0 0 4px 0;
-  color: #6b7280;
-  font-size: 0.9rem;
-}
-
-.status-content small {
-  color: #9ca3af;
-  font-size: 0.8rem;
-}
-
-.sync-result-card {
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 30px;
-  border: 1px solid #e5e7eb;
-}
-
-.sync-result-card.success {
-  background: #ecfdf5;
-  border-color: #10b981;
-}
-
-.sync-result-card.error {
-  background: #fef2f2;
-  border-color: #ef4444;
-}
-
-.result-header {
-  display: flex;
-  justify-content: between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.result-header h3 {
-  margin: 0;
-  color: #1f2937;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: #6b7280;
-  padding: 4px;
-}
-
-.close-btn:hover {
-  color: #374151;
-}
-
-.result-content p {
-  margin: 0 0 16px 0;
-  color: #374151;
-}
-
-.sync-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.stat-label {
-  font-size: 0.85rem;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.processed-tickets h4 {
-  margin: 0 0 12px 0;
-  color: #1f2937;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.ticket-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.ticket-item {
-  display: grid;
-  grid-template-columns: 80px 1fr 1fr 120px;
-  gap: 12px;
-  padding: 12px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 0.85rem;
-}
-
-.ticket-id {
-  font-weight: 600;
-  color: #667eea;
-}
-
-.ticket-user {
-  color: #1f2937;
-  font-weight: 500;
-}
-
-.ticket-email {
-  color: #6b7280;
-}
-
-.ticket-dept {
-  color: #9ca3af;
-  text-align: right;
-}
-
-.config-section {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 24px;
-}
-
-.config-section h3 {
-  margin: 0 0 20px 0;
-  color: #1f2937;
-  font-size: 1.2rem;
-  font-weight: 600;
-}
-
-.config-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-}
-
-.config-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.config-item label {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #374151;
-}
-
-.config-item p {
-  margin: 0;
-  color: #6b7280;
-  font-size: 0.9rem;
-}
-
-/* Sync Logs Styles */
-.logs-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 16px;
-}
-
-.logs-header h3 {
-  margin: 0;
-  color: #374151;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.logs-subtitle {
-  color: #6b7280;
-  font-size: 0.875rem;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 32px 16px;
-  background: #f9fafb;
-  border-radius: 8px;
-  border: 1px dashed #d1d5db;
-}
-
-.empty-icon {
-  font-size: 2rem;
-  margin-bottom: 8px;
-}
-
-.empty-state p {
-  margin: 0 0 4px 0;
-  color: #374151;
-  font-weight: 500;
-}
-
-.empty-state small {
-  color: #6b7280;
-}
-
-.logs-table {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.table-header {
-  display: grid;
-  grid-template-columns: 100px 120px 80px 80px 80px;
-  gap: 16px;
-  padding: 12px 16px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.table-row {
-  display: grid;
-  grid-template-columns: 100px 120px 80px 80px 80px;
-  gap: 16px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f3f4f6;
-  align-items: center;
-  transition: background-color 0.15s ease;
-}
-
-.table-row:hover {
-  background: #f9fafb;
-}
-
-.table-row:last-child {
-  border-bottom: none;
-}
-
-.status-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 4px 8px;
-  border-radius: 12px;
-  width: fit-content;
-}
-
-.status-badge.success {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.status-badge.error {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-
-.status-badge.success .status-dot {
-  background: #16a34a;
-}
-
-.status-badge.error .status-dot {
-  background: #dc2626;
-}
-
-.time-primary {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
-}
-
-.time-secondary {
-  font-size: 0.75rem;
-  color: #6b7280;
-  margin-top: 2px;
-}
-
-.duration-text {
-  font-size: 0.875rem;
-  color: #374151;
-  font-family: 'Monaco', 'Menlo', monospace;
-}
-
-.duration-text.muted {
-  color: #9ca3af;
-}
-
-.trigger-type {
-  font-size: 0.75rem;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: #f3f4f6;
-  color: #374151;
-  font-weight: 500;
-  text-align: center;
-}
-
-.details-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 0.75rem;
-  color: #6b7280;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.details-btn:hover {
-  border-color: #667eea;
-  color: #667eea;
-  background: #f8faff;
-}
-
-.details-btn.active {
-  border-color: #667eea;
-  color: #667eea;
-  background: #eff6ff;
-}
-
-.btn-icon {
-  font-size: 0.75rem;
-}
-
-.no-details {
-  color: #9ca3af;
-  font-size: 0.75rem;
-  text-align: center;
-}
-
-.details-row {
-  grid-column: 1 / -1;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.details-content {
-  padding: 16px;
-  background: #f8fafc;
-  border-top: 1px solid #e5e7eb;
-}
-
-.output-section,
-.error-section {
-  margin-bottom: 12px;
-}
-
-.output-section:last-child,
-.error-section:last-child {
-  margin-bottom: 0;
-}
-
-.output-header,
-.error-header {
-  margin-bottom: 8px;
-}
-
-.output-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #374151;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.error-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #dc2626;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.output-content,
-.error-content {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 12px;
-  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  color: #374151;
-  white-space: pre-wrap;
-  max-height: 150px;
-  overflow-y: auto;
+  
+  .sync-status-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .config-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .logs-table-header,
+  .log-row {
+    grid-template-columns: 80px 120px 100px 140px 60px;
+    font-size: 0.75rem;
+  }
+  
+  .logs-table-header > div,
+  .log-row > div {
+    padding: 8px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .logs-table-header,
+  .log-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  
+  .logs-table-header > div,
+  .log-row > div {
+    padding: 6px 12px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  
+  .logs-table-header > div:last-child,
+  .log-row > div:last-child {
+    border-bottom: none;
+  }
 }
 </style>

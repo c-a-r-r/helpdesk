@@ -195,7 +195,7 @@ class ScriptExecutionResponse(BaseModel):
 
 # Script log schemas
 class ScriptLogBase(BaseModel):
-    user_id: int
+    user_id: Optional[int] = None
     script_type: str
     script_name: str
     status: ScriptStatus
