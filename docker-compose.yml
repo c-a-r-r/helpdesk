@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  db:
+    image: mariadb:11.1
+    container_name: helpdesk-mariadb
+    ports:
+      - "3306:3306"
+    environment:
+      - MARIADB_ROOT_PASSWORD=rootpassword
+      - MARIADB_DATABASE=helpdesk_crm
+      - MARIADB_USER=helpdesk
+      - MARIADB_PASSWORD=helpdesk123
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - helpdesk-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: helpdesk-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Environment configuration
+      - ENVIRONMENT=dev
+      # Database configuration
+      - DB_TYPE=mariadb
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=helpdesk
+      - DB_PASSWORD=helpdesk123
+      - DB_NAME=helpdesk_crm
+    volumes:
+      - backend_data:/app/data
+    networks:
+      - helpdesk-network
+    depends_on:
+      - db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./vue-app
+      dockerfile: Dockerfile
+    container_name: helpdesk-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    networks:
+      - helpdesk-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  backend_data:
+    driver: local
+  mariadb_data:
+    driver: local
+
+networks:
+  helpdesk-network:
+    driver: bridge

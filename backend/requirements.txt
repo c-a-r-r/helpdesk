@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+python-jose[cryptography]
+httpx
+requests
+python-dotenv
+sqlalchemy
+pymysql
+alembic
+python-multipart
+pydantic[email]
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+schedule
+python-dateutil
