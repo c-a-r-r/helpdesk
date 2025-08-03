@@ -169,12 +169,12 @@
       </div>
     </div>
 
-    <!-- Recent Activity -->
+    <!-- Script Execution Logs -->
     <div class="content-section">
       <div class="section-header">
         <div class="section-title">
-          <i class="fas fa-history"></i>
-          <h2>Recent Activity</h2>
+          <i class="fas fa-terminal"></i>
+          <h2>Recent Script Executions</h2>
         </div>
         <div class="header-actions">
           <button class="btn-secondary" @click="fetchDashboardData">
@@ -184,23 +184,25 @@
         </div>
       </div>
       
-      <div class="activity-list">
-        <div v-if="recentActivities.length === 0" class="no-activity">
-          <div class="no-activity-icon">
-            <i class="fas fa-clock"></i>
+      <div class="activity-list-container">
+        <div class="activity-list">
+          <div v-if="recentActivities.length === 0" class="no-activity">
+            <div class="no-activity-icon">
+              <i class="fas fa-terminal"></i>
+            </div>
+            <p>No recent script executions to display</p>
           </div>
-          <p>No recent activity to display</p>
-        </div>
-        <div v-else v-for="activity in recentActivities" :key="activity.id" class="activity-item">
-          <div class="activity-icon" :class="[activity.type, getActivityStatusClass(activity)]">
-            <i :class="getActivityIcon(activity)"></i>
-          </div>
-          <div class="activity-content">
-            <div class="activity-title">{{ activity.title }}</div>
-            <div class="activity-description">{{ getActivityDescription(activity) }}</div>
-            <div class="activity-meta">
-              <span class="activity-user">{{ activity.user }}</span>
-              <span class="activity-time">{{ formatDate(activity.timestamp) }}</span>
+          <div v-else v-for="activity in recentActivities" :key="activity.id" class="activity-item">
+            <div class="activity-icon" :class="[activity.type, getActivityStatusClass(activity)]">
+              <i :class="getActivityIcon(activity)"></i>
+            </div>
+            <div class="activity-content">
+              <div class="activity-title">{{ activity.title }}</div>
+              <div class="activity-description">{{ getActivityDescription(activity) }}</div>
+              <div class="activity-meta">
+                <span class="activity-user">{{ activity.user }}</span>
+                <span class="activity-time">{{ formatDate(activity.timestamp) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -252,54 +254,33 @@ export default {
           offboardedUsers: statsData.offboardedUsers || 0
         }
         
-        // Fetch recent activity
-        const activityResponse = await fetch('/api/v1/dashboard/recent-activity?limit=8')
-        if (!activityResponse.ok) {
-          throw new Error('Failed to fetch recent activity')
+        // Fetch real script execution logs instead of recent activity
+        const logsResponse = await fetch('/api/v1/scripts/logs?limit=10')
+        if (!logsResponse.ok) {
+          throw new Error('Failed to fetch script execution logs')
         }
-        const activities = await activityResponse.json()
-        // Sort activities by timestamp - newest first
-        this.recentActivities = activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        const executionLogs = await logsResponse.json()
+        
+        // Transform execution logs into activity format
+        this.recentActivities = executionLogs.map(log => ({
+          id: log.id,
+          type: 'script',
+          title: `${log.script_type} - ${log.script_name}`,
+          description: log.output || log.error_message || `Script executed`,
+          status: log.status, // success, failed, running
+          timestamp: log.completed_at || log.started_at,
+          user: log.user_id ? `User ID: ${log.user_id}` : 'System',
+          executedBy: log.executed_by
+        })).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
         this.error = error.message
-        // Fallback to mock data if API fails
-        this.loadMockData()
+        // Don't fall back to mock data - show the error instead
+        this.recentActivities = []
       } finally {
         this.loading = false
       }
-    },
-    loadMockData() {
-      // Fallback mock data for development
-      this.stats = {
-        totalUsers: 156,
-        completedUsers: 142,
-        inProgressUsers: 6,
-        pendingUsers: 8,
-        offboardedUsers: 23
-      }
-      this.recentActivities = [
-        {
-          id: 'mock-1',
-          type: 'script',
-          title: 'Script executed: create_user',
-          description: 'JumpCloud script for John Smith',
-          status: 'success',
-          timestamp: new Date('2025-07-30T14:30:00').toISOString(),
-          user: 'John Smith',
-          executedBy: 'admin@company.com'
-        },
-        {
-          id: 'mock-2',
-          type: 'status_change',
-          title: 'Status updated: In Progress → Completed',
-          description: 'Sarah Johnson onboarding completed',
-          timestamp: new Date('2025-07-30T12:15:00').toISOString(),
-          user: 'Sarah Johnson',
-          updatedBy: 'hr@company.com'
-        }
-      ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
     },
     navigateTo(path) {
       this.$router.push(path)
@@ -315,7 +296,11 @@ export default {
     },
     getActivityDescription(activity) {
       if (activity.type === 'script') {
-        return `${activity.description} • Executed by ${activity.executedBy}`
+        // Format script execution details
+        const parts = []
+        if (activity.description) parts.push(activity.description)
+        if (activity.executedBy) parts.push(`Executed by ${activity.executedBy}`)
+        return parts.join(' • ')
       } else if (activity.type === 'status_change') {
         return `${activity.description} • Updated by ${activity.updatedBy}`
       }
@@ -323,7 +308,12 @@ export default {
     },
     getActivityStatusClass(activity) {
       if (activity.type === 'script') {
-        return activity.status === 'success' ? 'success' : activity.status === 'failed' ? 'error' : 'warning'
+        switch(activity.status) {
+          case 'success': return 'success'
+          case 'failed': return 'error'  
+          case 'running': return 'warning'
+          default: return 'info'
+        }
       }
       return 'info'
     },
@@ -766,6 +756,31 @@ export default {
 }
 
 /* Activity List */
+.activity-list-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: 8px;
+}
+
+.activity-list-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.activity-list-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.activity-list-container::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+.activity-list-container::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
 .activity-list {
   padding: 0;
 }
