@@ -116,6 +116,11 @@ class FreshserviceOnboardingSync(BaseUserScript):
     def transform_freshservice_data(self, ticket_id: int, custom_fields: Dict[str, Any]) -> Dict[str, Any]:
         """Transform Freshservice custom fields to helpdesk CRM user format"""
         
+        # Debug: Log all available custom fields to identify the correct department field name
+        self.log_info(f"Available custom fields for ticket {ticket_id}: {list(custom_fields.keys())}")
+        self.log_info(f"Department field value: '{custom_fields.get('department', 'NOT_FOUND')}'")
+        self.log_info(f"Departments field value: '{custom_fields.get('departments', 'NOT_FOUND')}'")
+        
         # Extract company email from display_name and company
         first_name = custom_fields.get("first_name", "")
         last_name = custom_fields.get("last_name", "")
@@ -162,7 +167,7 @@ class FreshserviceOnboardingSync(BaseUserScript):
             # Company info
             "company": custom_fields.get("company", ""),
             "title": custom_fields.get("title", ""),
-            "department": custom_fields.get("department", ""),
+            "department": custom_fields.get("departments", ""),  # Note: Freshservice uses 'departments' (plural)
             "manager": custom_fields.get("manager", ""),
             "start_date": formatted_start_date,
             
