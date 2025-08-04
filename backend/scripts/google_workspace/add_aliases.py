@@ -6,11 +6,11 @@ Adds email aliases to an existing Google Workspace user
 import sys
 import os
 import json
-import boto3
-from botocore.exceptions import ClientError
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # Add backend root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add scripts directory
 
 from base_script import BaseUserScript
+from aws_secrets import get_google_credentials
 from typing import Dict, Any, List
 
 try:
@@ -35,26 +35,18 @@ class AddGoogleWorkspaceAliases(BaseUserScript):
         super().__init__()
         self.service = None
     
-    def get_google_credentials(self) -> bool:
-        """Get Google Workspace credentials from AWS Secrets Manager"""
+    def setup_google_credentials(self) -> bool:
+        """Set up Google Workspace API credentials using centralized secrets manager"""
         try:
-            # Use existing AWS secret ARN (same as create_user.py)
-            secret_arn = "arn:aws:secretsmanager:us-west-2:134308154914:secret:google-service-account-signature-secret-KHaS4K"
+            # Get Google credentials using centralized secrets manager
+            self.log_info("Retrieving Google service account credentials")
             
-            self.log_info(f"Retrieving Google service account credentials from AWS")
-            self.log_info(f"Secret ARN: {secret_arn}")
+            secret_data = get_google_credentials()
+            if not secret_data:
+                self.log_error("Failed to retrieve Google service account credentials")
+                return False
             
-            # Get AWS credentials
-            session = boto3.Session()
-            secrets_client = session.client('secretsmanager', region_name='us-west-2')
-            
-            self.log_info("AWS session created, attempting to retrieve secret...")
-            
-            # Retrieve the secret
-            response = secrets_client.get_secret_value(SecretId=secret_arn)
-            secret_data = json.loads(response['SecretString'])
-            
-            self.log_info("Secret retrieved successfully, creating service account credentials...")
+            self.log_info("Credentials retrieved successfully, creating service account...")
             
             # Validate secret data structure
             required_fields = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email']
@@ -80,21 +72,6 @@ class AddGoogleWorkspaceAliases(BaseUserScript):
             self.log_info("Google Workspace credentials configured successfully")
             return True
             
-        except ClientError as e:
-            error_code = e.response['Error']['Code']
-            error_msg = e.response['Error']['Message']
-            self.log_error(f"AWS Secrets Manager error ({error_code}): {error_msg}")
-            
-            if error_code == 'AccessDeniedException':
-                self.log_error("The Docker container doesn't have permission to access AWS Secrets Manager")
-                self.log_error("Make sure AWS credentials are properly configured in the container")
-            elif error_code == 'ResourceNotFoundException':
-                self.log_error(f"Secret not found: {secret_arn}")
-            
-            return False
-        except json.JSONDecodeError as e:
-            self.log_error(f"Failed to parse secret as JSON: {str(e)}")
-            return False
         except Exception as e:
             self.log_error(f"Failed to setup Google credentials: {str(e)}")
             self.log_error(f"Error type: {type(e).__name__}")
@@ -218,7 +195,7 @@ class AddGoogleWorkspaceAliases(BaseUserScript):
                 "message": f"Cannot add aliases to {email} - missing dependencies"
             }
         
-        if not self.get_google_credentials():
+        if not self.setup_google_credentials():
             return {
                 "status": "failed", 
                 "error": "Failed to setup Google credentials",

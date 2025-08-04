@@ -7,7 +7,8 @@ import sys
 import os
 import json
 import time
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # Add backend root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add scripts directory
 
 from base_script import BaseUserScript
 from typing import Dict, Any

@@ -2,6 +2,7 @@
 Script Manager for User Management Tools
 Handles execution of various user management scripts with database logging
 """
+import os
 import subprocess
 import json
 import logging
@@ -93,13 +94,23 @@ class ScriptManager:
             # Prepare command
             cmd = ["python", str(script_path)]
             
+            # Set up environment to ensure scripts can import aws_secrets module and base_script
+            backend_root = str(Path(__file__).parent.parent)
+            scripts_dir = str(Path(__file__).parent)
+            env = {
+                **dict(os.environ),  # Inherit current environment
+                "PYTHONPATH": f"{backend_root}:{scripts_dir}"  # Add both backend root and scripts directory
+            }
+            
             # Execute script with user data as JSON input
             process = subprocess.Popen(
                 cmd,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
+                env=env,
+                cwd=str(Path(__file__).parent.parent)  # Set working directory to backend root
             )
             
             stdout, stderr = process.communicate(input=json.dumps(script_input))

@@ -13,7 +13,6 @@ from schemas import (
 from crud import OnboardingCRUD, DepartmentMappingCRUD, ScriptLogCRUD
 from models import OnboardingStatus
 from scripts.script_manager import script_manager
-from scripts.freshservice.sync_onboarding import FreshserviceOnboardingSync
 from auth import parse_user_from_sso_claims, UserPermission
 from sqlalchemy import text
 

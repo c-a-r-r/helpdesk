@@ -9,9 +9,11 @@ import json
 import requests
 import secrets
 from datetime import datetime, timedelta, timezone
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # Add backend root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add scripts directory
 
 from base_script import BaseUserScript
+from aws_secrets import get_jumpcloud_api_key
 from typing import Dict, Any, List
 
 class FreshserviceOnboardingSync(BaseUserScript):
@@ -25,11 +27,11 @@ class FreshserviceOnboardingSync(BaseUserScript):
         self.freshdesk_domain = "americor.freshservice.com"
     
     def get_secrets(self) -> bool:
-        """Get Freshdesk & JumpCloud API keys from environment variables"""
+        """Get Freshdesk & JumpCloud API keys from centralized secrets manager"""
         try:
-            # Get API keys from environment variables
+            # Get API keys from centralized secrets manager
             self.freshdesk_api_key = os.getenv("FRESHDESK_API_KEY")
-            self.jumpcloud_api_key = os.getenv("JUMPCLOUD_API_KEY")
+            self.jumpcloud_api_key = get_jumpcloud_api_key()
             freshdesk_domain = os.getenv("FRESHDESK_DOMAIN")
             
             if freshdesk_domain:
@@ -40,10 +42,10 @@ class FreshserviceOnboardingSync(BaseUserScript):
                 return False
             
             if not self.jumpcloud_api_key:
-                self.log_error("JUMPCLOUD_API_KEY not found in environment variables")
+                self.log_error("Failed to retrieve JumpCloud API key")
                 return False
             
-            self.log_info("Successfully retrieved API keys from environment variables")
+            self.log_info("Successfully retrieved API keys from secrets manager")
             return True
             
         except Exception as e:

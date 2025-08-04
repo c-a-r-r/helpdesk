@@ -5,19 +5,19 @@ Binds a machine to a user in JumpCloud
 """
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # Add backend root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add scripts directory
 
 from base_script import BaseUserScript
+from aws_secrets import get_jumpcloud_api_key
 from typing import Dict, Any
-import boto3
 import json
 import requests
-from botocore.exceptions import ClientError
 
 class JumpCloudBinder:
     def __init__(self, region="us-west-2", logger=None):
         self.logger = logger
-        self.api_key = self.get_jumpcloud_api_key(region)
+        self.api_key = self.get_jumpcloud_api_key()
 
     def log_info(self, message):
         if self.logger:
@@ -31,20 +31,12 @@ class JumpCloudBinder:
         else:
             print(f"❌ {message}")
 
-    def get_jumpcloud_api_key(self, region):
-        """Retrieve API key from AWS Secrets Manager"""
+    def get_jumpcloud_api_key(self):
+        """Retrieve API key using the centralized secrets manager"""
         try:
-            client = boto3.client("secretsmanager", region_name=region)
-            secret_arn = "arn:aws:secretsmanager:us-west-2:134308154914:secret:helpdesk-crm/prod-zUcloT"
-            response = client.get_secret_value(SecretId=secret_arn)
-            secret_data = json.loads(response["SecretString"])
-
-            if "jumpcloud_api_key" not in secret_data:
-                raise Exception("jumpcloud_api_key not found in secret")
-
-            return secret_data["jumpcloud_api_key"]
-        except ClientError as e:
-            raise Exception(f"Secrets Manager error: {e}")
+            api_key = get_jumpcloud_api_key()
+            self.log_info("Retrieved JumpCloud API key successfully")
+            return api_key
         except Exception as e:
             raise Exception(f"Error retrieving JumpCloud API key: {e}")
 

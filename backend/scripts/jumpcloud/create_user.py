@@ -1,41 +1,33 @@
 #!/usr/bin/env python3
 """
-JumpCloud User Creation Script
+JumpCloud User Creation Script  
 Creates a new user in JumpCloud directory
 """
 import sys
 import os
 import json
+import time
 import requests
-import boto3
-from botocore.exceptions import ClientError
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import string
+import secrets
+from datetime import datetime
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # Add backend root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add scripts directory
 
 from base_script import BaseUserScript
+from aws_secrets import get_jumpcloud_api_key
 from typing import Dict, Any
 
 class CreateJumpCloudUser(BaseUserScript):
     """Creates a user in JumpCloud directory"""
 
     def get_jumpcloud_api_key(self) -> str:
-        """Retrieve JumpCloud API key from AWS Secrets Manager (no fallback)"""
+        """Retrieve JumpCloud API key using the centralized secrets manager"""
         try:
-            session = boto3.session.Session()
-            client = session.client(service_name="secretsmanager", region_name="us-west-2")
-
-            secret_arn = "arn:aws:secretsmanager:us-west-2:134308154914:secret:helpdesk-crm/prod-zUcloT"
-            response = client.get_secret_value(SecretId=secret_arn)
-            secret_data = json.loads(response["SecretString"])
-
-            api_key = secret_data.get("jumpcloud_api_key")
-            if not api_key:
-                raise ValueError("jumpcloud_api_key not found in Secrets Manager")
-
-            self.log_info("Retrieved JumpCloud API key from AWS Secrets Manager")
+            api_key = get_jumpcloud_api_key()
+            self.log_info("Retrieved JumpCloud API key successfully")
             return api_key
-
-        except ClientError as e:
-            raise Exception(f"AWS Secrets Manager error: {e}")
         except Exception as e:
             raise Exception(f"Error retrieving JumpCloud API key: {e}")
 

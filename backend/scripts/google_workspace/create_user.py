@@ -7,14 +7,15 @@ import sys
 import os
 import json
 import time
-import boto3
 import string
 import secrets
 from datetime import datetime
-from botocore.exceptions import ClientError
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # Add backend root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add scripts directory
 
 from base_script import BaseUserScript
+from aws_secrets import get_google_credentials
 from typing import Dict, Any
 
 try:
@@ -40,38 +41,30 @@ class CreateGoogleWorkspaceUser(BaseUserScript):
         self.service = None
     
     def get_google_credentials(self) -> bool:
-        """Get Google Workspace credentials from AWS Secrets Manager"""
+        """Get Google Workspace credentials using the centralized secrets manager"""
         try:
-            # Use existing AWS secret ARN
-            secret_arn = "arn:aws:secretsmanager:us-west-2:134308154914:secret:google-service-account-signature-secret-KHaS4K"
+            self.log_info("Retrieving Google service account credentials...")
             
-            self.log_info(f"Retrieving Google service account credentials from AWS")
-            self.log_info(f"Secret ARN: {secret_arn}")
+            # Use the centralized secrets manager
+            credentials_data = get_google_credentials()
             
-            # Get AWS credentials
-            session = boto3.Session()
-            secrets_client = session.client('secretsmanager', region_name='us-west-2')
-            
-            self.log_info("AWS session created, attempting to retrieve secret...")
-            
-            # Retrieve the secret
-            response = secrets_client.get_secret_value(SecretId=secret_arn)
-            secret_data = json.loads(response['SecretString'])
-            
-            self.log_info("Secret retrieved successfully, creating service account credentials...")
+            # If no Google credentials are configured (development mode), return False gracefully
+            if not credentials_data:
+                self.log_error("Google Workspace credentials not configured for this environment")
+                return False
             
             # Validate secret data structure
             required_fields = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email']
-            missing_fields = [field for field in required_fields if field not in secret_data]
+            missing_fields = [field for field in required_fields if field not in credentials_data]
             if missing_fields:
                 self.log_error(f"Missing required fields in service account JSON: {missing_fields}")
                 return False
             
-            self.log_info(f"Service account email: {secret_data.get('client_email', 'unknown')}")
+            self.log_info(f"Service account email: {credentials_data.get('client_email', 'unknown')}")
             
             # Create credentials with service account delegation
             credentials = service_account.Credentials.from_service_account_info(
-                secret_data,
+                credentials_data,
                 scopes=GOOGLE_SCOPES,
                 subject=ADMIN_EMAIL  # Delegate to admin email for directory operations
             )
@@ -84,21 +77,6 @@ class CreateGoogleWorkspaceUser(BaseUserScript):
             self.log_info("Google Workspace credentials configured successfully")
             return True
             
-        except ClientError as e:
-            error_code = e.response['Error']['Code']
-            error_msg = e.response['Error']['Message']
-            self.log_error(f"AWS Secrets Manager error ({error_code}): {error_msg}")
-            
-            if error_code == 'AccessDeniedException':
-                self.log_error("The Docker container doesn't have permission to access AWS Secrets Manager")
-                self.log_error("Make sure AWS credentials are properly configured in the container")
-            elif error_code == 'ResourceNotFoundException':
-                self.log_error(f"Secret not found: {secret_arn}")
-            
-            return False
-        except json.JSONDecodeError as e:
-            self.log_error(f"Failed to parse secret as JSON: {str(e)}")
-            return False
         except Exception as e:
             self.log_error(f"Failed to setup Google credentials: {str(e)}")
             self.log_error(f"Error type: {type(e).__name__}")
