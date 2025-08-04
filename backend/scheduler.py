@@ -204,7 +204,13 @@ class ReliableBackgroundScheduler:
             # Determine status
             if result.get("status") == "completed":
                 status = "success"
+                execution_logs = result.get('execution_logs', '')
                 output = f"✅ Automated sync completed successfully:\n" \
+                        f"  • Tickets processed: {tickets_processed}\n" \
+                        f"  • Users created: {users_created}\n" \
+                        f"  • Users skipped: {users_skipped}\n" \
+                        f"  • Execution time: {execution_time}s\n\n" \
+                        f"📋 Detailed Execution Log:\n{execution_logs}" if execution_logs else f"✅ Automated sync completed successfully:\n" \
                         f"  • Tickets processed: {tickets_processed}\n" \
                         f"  • Users created: {users_created}\n" \
                         f"  • Users skipped: {users_skipped}\n" \
@@ -223,7 +229,9 @@ class ReliableBackgroundScheduler:
             else:
                 status = "failed"
                 error_msg = result.get("error", "Unknown error occurred")
-                output = f"❌ Automated sync failed: {error_msg}"
+                execution_logs = result.get('execution_logs', '')
+                output = f"❌ Automated sync failed: {error_msg}\n\n" \
+                        f"📋 Detailed Execution Log:\n{execution_logs}" if execution_logs else f"❌ Automated sync failed: {error_msg}"
                 logger.error(output)
             
             # Update sync_logs with results

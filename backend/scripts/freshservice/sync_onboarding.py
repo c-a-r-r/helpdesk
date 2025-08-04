@@ -26,12 +26,11 @@ class FreshserviceOnboardingSync(BaseUserScript):
         self.region = "us-west-2"
         self.freshdesk_domain = "americor.freshservice.com"
     
-    def get_secrets(self) -> bool:
+    def get_secrets(self, require_jumpcloud: bool = True) -> bool:
         """Get Freshdesk & JumpCloud API keys from centralized secrets manager"""
         try:
             # Get API keys from centralized secrets manager
             self.freshdesk_api_key = os.getenv("FRESHDESK_API_KEY")
-            self.jumpcloud_api_key = get_jumpcloud_api_key()
             freshdesk_domain = os.getenv("FRESHDESK_DOMAIN")
             
             if freshdesk_domain:
@@ -41,18 +40,32 @@ class FreshserviceOnboardingSync(BaseUserScript):
                 self.log_error("FRESHDESK_API_KEY not found in environment variables")
                 return False
             
-            if not self.jumpcloud_api_key:
-                self.log_error("Failed to retrieve JumpCloud API key")
-                return False
+            # JumpCloud API key is optional for read-only operations
+            try:
+                self.jumpcloud_api_key = get_jumpcloud_api_key()
+                if self.jumpcloud_api_key:
+                    self.log_info("Successfully retrieved both Freshservice and JumpCloud API keys")
+                else:
+                    if require_jumpcloud:
+                        self.log_error("Failed to retrieve JumpCloud API key")
+                        return False
+                    else:
+                        self.log_warning("JumpCloud API key not available - will only fetch tickets, not create users")
+            except Exception as e:
+                if require_jumpcloud:
+                    self.log_error(f"Error getting JumpCloud API key: {e}")
+                    return False
+                else:
+                    self.log_warning(f"JumpCloud API key not available: {e} - will only fetch tickets")
             
-            self.log_info("Successfully retrieved API keys from secrets manager")
+            self.log_info("Successfully retrieved Freshservice API key")
             return True
             
         except Exception as e:
             self.log_error(f"Error getting secrets: {e}")
             return False
     
-    def get_recent_onboarding_tickets(self, hours_back: int = 24) -> List[int]:
+    def get_recent_onboarding_tickets(self, hours_back: int = 3) -> List[int]:
         """Get Freshdesk tickets updated in the specified time window"""
         try:
             time_ago = (datetime.now(timezone.utc) - timedelta(hours=hours_back)).isoformat()
@@ -289,14 +302,15 @@ class FreshserviceOnboardingSync(BaseUserScript):
         self.log_info("Starting Freshservice onboarding sync...")
         
         # For this sync we don't need user data, use default values
-        hours_back = 24
+        hours_back = 5
         
-        # Get API credentials
-        if not self.get_secrets():
+        # Get API credentials - for now just require Freshservice, make JumpCloud optional
+        if not self.get_secrets(require_jumpcloud=False):
             return {
                 "status": "failed",
-                "error": "Failed to retrieve API credentials from AWS Secrets Manager",
-                "message": "Unable to access Freshservice and JumpCloud APIs"
+                "error": "Failed to retrieve Freshservice API credentials",
+                "message": "Unable to access Freshservice API",
+                "execution_logs": self.get_execution_logs()
             }
         
         try:
@@ -314,7 +328,8 @@ class FreshserviceOnboardingSync(BaseUserScript):
                     "users_skipped": 0,
                     "sync_window_hours": hours_back,
                     "processed_tickets": [],
-                    "sync_timestamp": datetime.now().isoformat()
+                    "sync_timestamp": datetime.now().isoformat(),
+                    "execution_logs": self.get_execution_logs()
                 }
             
             self.log_info(f"Found {len(ticket_ids)} tickets to process")
@@ -375,7 +390,8 @@ class FreshserviceOnboardingSync(BaseUserScript):
                 "users_skipped": users_skipped,
                 "sync_window_hours": hours_back,
                 "processed_tickets": processed_tickets,
-                "sync_timestamp": datetime.now().isoformat()
+                "sync_timestamp": datetime.now().isoformat(),
+                "execution_logs": self.get_execution_logs()
             }
             
         except Exception as e:
@@ -384,7 +400,8 @@ class FreshserviceOnboardingSync(BaseUserScript):
             return {
                 "status": "failed",
                 "error": error_msg,
-                "message": "Failed to sync onboarding data from Freshservice"
+                "message": "Failed to sync onboarding data from Freshservice",
+                "execution_logs": self.get_execution_logs()
             }
 
 def main():

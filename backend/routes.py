@@ -483,13 +483,28 @@ async def trigger_manual_freshservice_sync(db: Session = Depends(get_db)):
         result_proxy = db.execute(text("SELECT LAST_INSERT_ID()"))
         log_id = result_proxy.fetchone()[0]
         
-        # SKIP SCRIPT EXECUTION FOR NOW - just simulate success
+        # Execute the actual Freshservice sync script
+        from scripts.freshservice.sync_onboarding import FreshserviceOnboardingSync
+        
+        sync_script = FreshserviceOnboardingSync()
+        sync_script.user_data = {"hours_back": 24}  # Look back 24 hours for manual sync
+        
+        result = sync_script.execute()
+        
         execution_time = int(time.time() - start_time)
         completed_at = datetime.now()
         
-        # Simulate successful result
-        status = "success"
-        output = f"✅ Manual sync test completed: 0 tickets processed, 0 users created, 0 users skipped. Execution time: {execution_time}s"
+        # Process real results
+        status = "success" if result.get("status") == "completed" else "failed"
+        tickets_processed = result.get('tickets_processed', 0)
+        users_created = result.get('users_created', 0)
+        users_skipped = result.get('users_skipped', 0)
+        execution_logs = result.get('execution_logs', '')
+        
+        # Create detailed output message with execution logs
+        summary = f"Manual sync completed: {tickets_processed} tickets processed, {users_created} users created, {users_skipped} users skipped. Execution time: {execution_time}s"
+        output = f"{summary}\n\n📋 Detailed Execution Log:\n{execution_logs}" if execution_logs else summary
+        error_message = result.get('error', '') if status == "failed" else None
         
         db.execute(text("""
             UPDATE sync_logs 
@@ -498,25 +513,33 @@ async def trigger_manual_freshservice_sync(db: Session = Depends(get_db)):
                 tickets_processed = :tickets_processed,
                 users_created = :users_created,
                 users_skipped = :users_skipped,
-                output_message = :output_message
+                output_message = :output_message,
+                error_message = :error_message
             WHERE id = :log_id
         """), {
             'status': status,
             'completed_at': completed_at,
             'execution_time': execution_time,
-            'tickets_processed': 0,
-            'users_created': 0,
-            'users_skipped': 0,
+            'tickets_processed': tickets_processed,
+            'users_created': users_created,
+            'users_skipped': users_skipped,
             'output_message': output,
+            'error_message': error_message,
             'log_id': log_id
         })
         
         db.commit()
         
         return {
-            "success": True,
+            "success": status == "success",
             "message": output,
-            "result": {"status": "test_completed", "message": "Bypassed script execution for testing"},
+            "result": {
+                "status": status,
+                "tickets_processed": tickets_processed,
+                "users_created": users_created,
+                "users_skipped": users_skipped,
+                "execution_time": execution_time
+            },
             "log_id": log_id
         }
         

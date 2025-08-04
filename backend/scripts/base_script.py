@@ -7,6 +7,7 @@ import sys
 import logging
 from abc import ABC, abstractmethod
 from typing import Dict, Any
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,6 +17,7 @@ class BaseUserScript(ABC):
     
     def __init__(self):
         self.user_data = None
+        self.execution_logs = []  # Capture logs for database storage
     
     def run(self):
         """Main entry point for script execution"""
@@ -75,11 +77,28 @@ class BaseUserScript(ABC):
     
     def log_info(self, message: str):
         """Log info message"""
+        timestamp = f"[{datetime.now().strftime('%H:%M:%S')}]"
+        formatted_message = f"{timestamp} [INFO] {message}"
         logger.info(f"[{self.__class__.__name__}] {message}")
+        self.execution_logs.append(formatted_message)
     
     def log_error(self, message: str):
         """Log error message"""
+        timestamp = f"[{datetime.now().strftime('%H:%M:%S')}]"
+        formatted_message = f"{timestamp} [ERROR] {message}"
         logger.error(f"[{self.__class__.__name__}] {message}")
+        self.execution_logs.append(formatted_message)
+    
+    def log_warning(self, message: str):
+        """Log warning message"""
+        timestamp = f"[{datetime.now().strftime('%H:%M:%S')}]"
+        formatted_message = f"{timestamp} [WARNING] {message}"
+        logger.warning(f"[{self.__class__.__name__}] {message}")
+        self.execution_logs.append(formatted_message)
+    
+    def get_execution_logs(self) -> str:
+        """Get all execution logs as a single string"""
+        return "\n".join(self.execution_logs)
 
 if __name__ == "__main__":
     # This should be overridden in actual script files
