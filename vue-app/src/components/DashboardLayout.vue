@@ -3,7 +3,7 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
       <div class="logo">
-        <img src="/hd-logo-200.png" alt="Helpdesk CRM" class="logo-image">
+        <img src="/hd-logo-200.png" alt="Helpdesk" class="logo-image">
       </div>
       
       <nav class="navigation">

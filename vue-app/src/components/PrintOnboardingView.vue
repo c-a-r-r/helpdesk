@@ -60,91 +60,136 @@
       </div>
       
       <div class="credential-sheet" ref="printableContent">
-        <div class="credential-header">
-          <div class="credential-title">Credential Sheet</div>
-          <div class="employee-name">{{ selectedUser.firstName }} {{ selectedUser.lastName }}</div>
-        </div>
-        
-        <div class="credential-content">
-          <div class="credential-section">
-            <div class="section-title">Email Address</div>
-            <div class="credential-item">
-              <span class="credential-value">{{ selectedUser.companyEmail }}</span>
-            </div>
-          </div>
-          
-          <div class="credential-section">
-            <div class="section-title">Windows & Jumpcloud</div>
-            <div class="credential-row">
-              <span class="credential-label">Username</span>
-              <span class="credential-value">{{ selectedUser.companyEmail }}</span>
-            </div>
-            <div class="credential-row">
-              <span class="credential-label">Password</span>
-              <span class="credential-value">{{ selectedUser.password }}</span>
-            </div>
-          </div>
-          
-          <div class="credential-section">
-            <div class="section-title">Google</div>
-            <div class="credential-row">
-              <span class="credential-label">Username</span>
-              <span class="credential-value">{{ selectedUser.companyEmail }}</span>
-            </div>
-            <div class="credential-row">
-              <span class="credential-label">Password</span>
-              <span class="credential-value">Use SSO (single sign-on) with Jumpcloud</span>
-            </div>
-          </div>
-          
-          <div v-if="selectedUser.zoom" class="credential-section">
-            <div class="section-title">Zoom</div>
-            <div class="credential-row">
-              <span class="credential-label">Username</span>
-              <span class="credential-value">{{ selectedUser.companyEmail }}</span>
-            </div>
-            <div class="credential-row">
-              <span class="credential-label">Password</span>
-              <span class="credential-value">Use SSO (single sign-on) with Jumpcloud</span>
-            </div>
-            <div class="credential-row">
-              <span class="credential-label">Phone Number</span>
-              <span class="credential-value">{{ selectedUser.phoneNumber || 'N/A' }}</span>
-            </div>
-            <div class="credential-row">
-              <span class="credential-label">Station ID</span>
-              <span class="credential-value">Not Required For Zoom</span>
-            </div>
-          </div>
-          
-          <div v-if="selectedUser.five9" class="credential-section">
-            <div class="section-title">Five9</div>
-            <div class="credential-row">
-              <span class="credential-label">Username</span>
-              <span class="credential-value">{{ selectedUser.companyEmail }}</span>
-            </div>
-            <div class="credential-row">
-              <span class="credential-label">Password</span>
-              <span class="credential-value">Use SSO (single sign-on) with Jumpcloud</span>
-            </div>
-            <div class="credential-row">
-              <span class="credential-label">Extension</span>
-              <span class="credential-value">{{ selectedUser.extension || 'To be assigned' }}</span>
-            </div>
-          </div>
-          
-          <div class="credential-section">
-            <div class="section-title">CRM SIGN IN VIA GOOGLE</div>
-            <div class="credential-row">
-              <span class="credential-label">Username</span>
-              <span class="credential-value">{{ selectedUser.companyEmail }}</span>
-            </div>
-            <div class="credential-row">
-              <span class="credential-label">Password</span>
-              <span class="credential-value">Use SSO (single sign-on) with Jumpcloud</span>
-            </div>
-          </div>
-        </div>
+        <table class="credential-table">
+          <thead>
+            <tr>
+              <th class="credential-title">Credential Sheet</th>
+              <th class="employee-name">{{ selectedUser.firstName }} {{ selectedUser.lastName }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="2" class="section-title-full">Email Address</td>
+            </tr>
+            <tr>
+              <td colspan="2" class="credential-item">{{ selectedUser.companyEmail }}</td>
+            </tr>
+            
+            <tr>
+              <td class="section-title">Windows & Jumpcloud</td>
+              <td class="section-title">Google</td>
+            </tr>
+            <tr>
+              <td class="credential-cell">
+                <table class="credential-subtable">
+                  <tr>
+                    <td class="credential-label">Username</td>
+                    <td class="credential-value">{{ selectedUser.companyEmail }}</td>
+                  </tr>
+                  <tr>
+                    <td class="credential-label">Password</td>
+                    <td class="credential-value">{{ selectedUser.password }}</td>
+                  </tr>
+                </table>
+              </td>
+              <td class="credential-cell">
+                <table class="credential-subtable">
+                  <tr>
+                    <td class="credential-label">Username</td>
+                    <td class="credential-value">{{ selectedUser.companyEmail }}</td>
+                  </tr>
+                  <tr>
+                    <td class="credential-label">Password</td>
+                    <td class="credential-value">Use SSO (single sign-on) with Jumpcloud</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            
+            <tr v-if="selectedUser.zoom || selectedUser.five9">
+              <td class="section-title" v-if="selectedUser.zoom">Zoom</td>
+              <td class="section-title" v-if="selectedUser.five9">Five9</td>
+              <td class="section-title" v-if="!selectedUser.zoom && selectedUser.five9">CRM SIGN IN VIA GOOGLE</td>
+              <td class="section-title" v-if="selectedUser.zoom && !selectedUser.five9">CRM SIGN IN VIA GOOGLE</td>
+            </tr>
+            <tr v-if="selectedUser.zoom || selectedUser.five9">
+              <td class="credential-cell" v-if="selectedUser.zoom">
+                <table class="credential-subtable">
+                  <tr>
+                    <td class="credential-label">Username</td>
+                    <td class="credential-value">{{ selectedUser.companyEmail }}</td>
+                  </tr>
+                  <tr>
+                    <td class="credential-label">Password</td>
+                    <td class="credential-value">Use SSO (single sign-on) with Jumpcloud</td>
+                  </tr>
+                </table>
+              </td>
+              <td class="credential-cell" v-if="selectedUser.five9">
+                <table class="credential-subtable">
+                  <tr>
+                    <td class="credential-label">Username</td>
+                    <td class="credential-value">{{ selectedUser.companyEmail }}</td>
+                  </tr>
+                  <tr>
+                    <td class="credential-label">Password</td>
+                    <td class="credential-value">Use SSO (single sign-on) with Jumpcloud</td>
+                  </tr>
+                  <tr>
+                    <td class="credential-label">Extension</td>
+                    <td class="credential-value">{{ selectedUser.extension || 'To be assigned' }}</td>
+                  </tr>
+                </table>
+              </td>
+              <td class="credential-cell" v-if="!selectedUser.zoom && selectedUser.five9">
+                <table class="credential-subtable">
+                  <tr>
+                    <td class="credential-label">Username</td>
+                    <td class="credential-value">{{ selectedUser.companyEmail }}</td>
+                  </tr>
+                  <tr>
+                    <td class="credential-label">Password</td>
+                    <td class="credential-value">Use SSO (single sign-on) with Jumpcloud</td>
+                  </tr>
+                  <tr>
+                    <td class="credential-label">&nbsp;</td>
+                    <td class="credential-value">&nbsp;</td>
+                  </tr>
+                </table>
+              </td>
+              <td class="credential-cell" v-if="selectedUser.zoom && !selectedUser.five9">
+                <table class="credential-subtable">
+                  <tr>
+                    <td class="credential-label">Username</td>
+                    <td class="credential-value">{{ selectedUser.companyEmail }}</td>
+                  </tr>
+                  <tr>
+                    <td class="credential-label">Password</td>
+                    <td class="credential-value">Use SSO (single sign-on) with Jumpcloud</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            
+            <tr v-if="!selectedUser.zoom && !selectedUser.five9">
+              <td colspan="2" class="section-title-full">CRM SIGN IN VIA GOOGLE</td>
+            </tr>
+            <tr v-if="!selectedUser.zoom && !selectedUser.five9">
+              <td colspan="2" class="credential-cell">
+                <table class="credential-subtable">
+                  <tr>
+                    <td class="credential-label">Username</td>
+                    <td class="credential-value">{{ selectedUser.companyEmail }}</td>
+                  </tr>
+                  <tr>
+                    <td class="credential-label">Password</td>
+                    <td class="credential-value">Use SSO (single sign-on) with Jumpcloud</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
         
         <div class="credential-footer">
           <div class="setup-instructions">
@@ -221,7 +266,7 @@ export default {
           zoom: user.zoom || false,
           five9: user.five9 || false,
           extension: user.extension || null
-        }))
+        })).sort((a, b) => b.id - a.id) // Sort by ID descending (newest first)
         this.filteredUsers = this.users
       } catch (error) {
         console.error('Error loading users:', error)
@@ -248,7 +293,37 @@ export default {
       this.selectedUser = user
     },
     printInfo() {
+      // Add print class to body to override any external styles
+      document.body.classList.add('printing')
+      
+      // Hide any potential overlays or highlights
+      const overlaySelectors = [
+        '[class*="highlight"]',
+        '[class*="annotation"]', 
+        '[class*="overlay"]',
+        '[style*="pink"]',
+        '[style*="magenta"]'
+      ]
+      
+      const overlays = []
+      overlaySelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector)
+        elements.forEach(el => {
+          overlays.push({element: el, originalDisplay: el.style.display})
+          el.style.display = 'none'
+        })
+      })
+      
+      // Use browser's native print
       window.print()
+      
+      // Restore elements after print
+      setTimeout(() => {
+        document.body.classList.remove('printing')
+        overlays.forEach(({element, originalDisplay}) => {
+          element.style.display = originalDisplay
+        })
+      }, 1000)
     },
     formatDate(date) {
       if (!date) return 'N/A'
@@ -431,106 +506,157 @@ export default {
   max-width: 800px;
   margin: 0 auto;
   background: white;
-  border: 2px solid #000;
   font-family: Arial, sans-serif;
 }
 
-.credential-header {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border-bottom: 2px solid #000;
+.credential-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 4px solid #000;
+  background: white;
+  table-layout: fixed;
+  font-family: Arial, sans-serif;
+}
+
+.credential-table th,
+.credential-table td {
+  border: 2px solid #000;
+  padding: 0;
+  margin: 0;
+  vertical-align: middle;
 }
 
 .credential-title {
-  background: #f0f0f0;
-  padding: 20px;
+  background: #f0f0f0 !important;
+  padding: 15px;
   font-size: 24px;
   font-weight: bold;
   text-align: center;
-  border-right: 2px solid #000;
+  width: 50%;
+  height: 60px;
+  vertical-align: middle;
+  border: 2px solid #000;
 }
 
 .employee-name {
-  background: #e6f3ff;
-  padding: 20px;
-  font-size: 20px;
+  background: #e6f3ff !important;
+  padding: 15px;
+  font-size: 22px;
   font-weight: bold;
   text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.credential-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-
-.credential-section {
-  border-bottom: 1px solid #000;
-  border-right: 1px solid #000;
-}
-
-.credential-section:nth-child(even) {
-  border-right: none;
-}
-
-.credential-section:last-child,
-.credential-section:nth-last-child(2) {
-  border-bottom: none;
+  width: 50%;
+  height: 60px;
+  vertical-align: middle;
+  border: 2px solid #000;
 }
 
 .section-title {
-  background: #f0f0f0;
+  background: #f8f8f8 !important;
   padding: 12px;
   font-weight: bold;
   text-align: center;
-  border-bottom: 1px solid #000;
+  font-size: 16px;
+  height: 40px;
+  vertical-align: middle;
+  border: 2px solid #000;
+}
+
+.section-title-full {
+  background: #f8f8f8 !important;
+  padding: 12px;
+  font-weight: bold;
+  text-align: center;
+  font-size: 16px;
+  height: 40px;
+  vertical-align: middle;
+  border: 2px solid #000;
 }
 
 .credential-item {
   padding: 12px;
   text-align: center;
   font-weight: bold;
+  font-size: 18px;
+  height: 40px;
+  vertical-align: middle;
+  border: 2px solid #000;
 }
 
-.credential-row {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  border-bottom: 1px solid #ddd;
+.credential-cell {
+  padding: 0;
+  vertical-align: middle;
+  border: 2px solid #000 !important;
+  height: auto;
+  position: relative;
 }
 
-.credential-row:last-child {
+.credential-subtable {
+  width: 100%;
+  border-collapse: collapse;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.credential-subtable tr {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.credential-subtable td {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-bottom: 2px solid #000;
+  vertical-align: middle;
+  height: 50px;
+}
+
+.credential-subtable tr:last-child td {
   border-bottom: none;
 }
 
 .credential-label {
-  padding: 8px 12px;
-  background: #f8f8f8;
+  padding: 10px 15px;
+  background: #f8f8f8 !important;
   font-weight: bold;
-  border-right: 1px solid #ddd;
+  border-right: 2px solid #000 !important;
+  width: 33.33%;
+  text-align: center;
+  font-size: 14px;
+  min-height: 50px;
 }
 
 .credential-value {
-  padding: 8px 12px;
-  background: white;
+  padding: 10px 15px;
+  background: white !important;
+  width: 66.67%;
+  text-align: center;
+  font-size: 14px;
+  word-break: break-word;
+  min-height: 50px;
 }
 
 .credential-footer {
+  border: 4px solid #000;
   border-top: 2px solid #000;
   display: grid;
   grid-template-columns: 1fr 1fr;
+  margin-top: -2px;
 }
 
 .setup-instructions {
   padding: 20px;
   border-right: 2px solid #000;
+  background: white;
 }
 
 .instruction-title {
   font-weight: bold;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   text-decoration: underline;
+  font-size: 16px;
 }
 
 .instruction-steps {
@@ -545,27 +671,28 @@ export default {
 .contact-info {
   padding: 20px;
   text-align: center;
+  background: white;
 }
 
 .contact-title {
   font-weight: bold;
   margin-bottom: 15px;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .contact-details {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: bold;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .policy-note {
   grid-column: 1 / -1;
   padding: 15px;
-  border-top: 1px solid #000;
-  font-size: 10px;
+  border-top: 2px solid #000;
+  font-size: 12px;
   text-align: center;
-  background: #f9f9f9;
+  background: #f9f9f9 !important;
 }
 
 .btn-primary {
@@ -583,54 +710,207 @@ export default {
   background: #5a67d8;
 }
 
+/* Hide overlays when printing class is active */
+body.printing *[class*="highlight"],
+body.printing *[class*="annotation"],
+body.printing *[class*="overlay"],
+body.printing *[style*="pink"],
+body.printing *[style*="magenta"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
 @media print {
+  /* Hide everything except credential sheet */
+  body * {
+    visibility: hidden;
+  }
+  
+  .credential-sheet,
+  .credential-sheet * {
+    visibility: visible;
+  }
+  
+  /* Hide scrollbars and buttons */
+  body {
+    overflow: hidden !important;
+  }
+  
+  /* Hide all buttons and interactive elements */
+  button,
+  .btn-primary,
+  .btn-outline,
+  input,
+  .search-box,
+  .section-header,
   .page-header,
-  .search-content,
-  .section-header {
+  .content-section:first-child {
+    visibility: hidden !important;
     display: none !important;
   }
   
-  .content-section {
-    box-shadow: none;
-    border: none;
-    margin: 0;
-    padding: 0;
+  .credential-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 9999 !important;
+    overflow: visible !important;
   }
   
-  .credential-sheet {
-    margin: 0;
-    max-width: none;
-    width: 100%;
-    font-size: 12px;
+  /* Hide any overlays, highlights, annotations, or visual aids */
+  *[style*="pink"],
+  *[style*="magenta"],
+  *[style*="#ff69b4"],
+  *[style*="#ffc0cb"],
+  *[style*="rgba(255"],
+  *[class*="highlight"],
+  *[class*="annotation"],
+  *[class*="overlay"],
+  *[class*="tooltip"],
+  *[class*="popup"],
+  .pink,
+  .highlight,
+  .annotation,
+  .overlay,
+  .tooltip,
+  .popup {
+    visibility: hidden !important;
+    display: none !important;
+    opacity: 0 !important;
+  }
+  
+  /* Remove any colored borders or backgrounds */
+  * {
+    border-color: #000 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  
+  /* Override any inspector/developer tool styles */
+  *::before,
+  *::after {
+    display: none !important;
+    content: none !important;
+  }
+  
+  /* Force all borders to be complete and consistent */
+  .credential-table {
+    border: 4px solid #000 !important;
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+  
+  .credential-table th,
+  .credential-table td {
+    border: 2px solid #000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    vertical-align: middle !important;
+  }
+  
+  .credential-cell {
+    border: 2px solid #000 !important;
+    padding: 0 !important;
+    vertical-align: middle !important;
+  }
+  
+  .credential-subtable {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .credential-subtable tr {
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .credential-subtable td {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-bottom: 2px solid #000 !important;
+    vertical-align: middle !important;
+    height: 45px !important;
+  }
+  
+  .credential-subtable tr:last-child td {
+    border-bottom: none !important;
+  }
+  
+  .credential-label {
+    border-right: 2px solid #000 !important;
+    background: #f8f8f8 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    padding: 10px 12px !important;
+    width: 33.33% !important;
+    text-align: center !important;
+    font-size: 12px !important;
+    min-height: 45px !important;
+    font-weight: bold !important;
+  }
+  
+  .credential-value {
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    padding: 10px 12px !important;
+    width: 66.67% !important;
+    text-align: center !important;
+    font-size: 12px !important;
+    min-height: 45px !important;
   }
   
   .credential-title {
-    font-size: 20px;
+    background: #f0f0f0 !important;
+    border: 2px solid #000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   
   .employee-name {
-    font-size: 18px;
+    background: #e6f3ff !important;
+    border: 2px solid #000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   
-  .contact-title {
-    font-size: 14px;
+  .section-title,
+  .section-title-full {
+    background: #f8f8f8 !important;
+    border: 2px solid #000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   
-  .contact-details {
-    font-size: 16px;
+  .credential-item {
+    border: 2px solid #000 !important;
   }
   
-  .instruction-steps {
-    font-size: 10px;
+  .credential-footer {
+    border: 4px solid #000 !important;
+    border-top: 2px solid #000 !important;
+  }
+  
+  .setup-instructions {
+    border-right: 2px solid #000 !important;
   }
   
   .policy-note {
-    font-size: 8px;
-  }
-  
-  /* Ensure proper page breaks */
-  .credential-sheet {
-    page-break-inside: avoid;
+    border-top: 2px solid #000 !important;
+    background: #f9f9f9 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 </style>
