@@ -380,37 +380,59 @@
             </div>
             
             <div class="logs-table-body">
-              <div v-for="(log, index) in syncLogs" :key="index" class="log-row">
-                <div class="col-status">
-                  <span class="status-badge" :class="log.status === 'success' ? 'success' : 'failed'">
-                    <i class="fas" :class="log.status === 'success' ? 'fa-check-circle' : 'fa-times-circle'"></i>
-                  </span>
-                </div>
-                
-                <div class="col-time">
-                  <div class="time-display">
-                    {{ formatDateTime(log.executed_at) }}
+              <div v-for="(log, index) in syncLogs" :key="index" class="log-row-container">
+                <div class="log-row" @click="toggleSyncLogExpanded(index)">
+                  <div class="col-status">
+                    <span class="status-badge" :class="log.status === 'success' ? 'success' : 'failed'">
+                      <i class="fas" :class="log.status === 'success' ? 'fa-check-circle' : 'fa-times-circle'"></i>
+                    </span>
+                  </div>
+                  
+                  <div class="col-time">
+                    <div class="time-display">
+                      {{ formatDateTime(log.executed_at) }}
+                    </div>
+                  </div>
+                  
+                  <div class="col-trigger">
+                    <span class="trigger-badge" :class="log.triggered_by === 'scheduler' ? 'auto' : 'manual'">
+                      <i class="fas" :class="log.triggered_by === 'scheduler' ? 'fa-robot' : 'fa-user'"></i>
+                      {{ log.triggered_by === 'scheduler' ? ' Auto' : ' Manual' }}
+                    </span>
+                  </div>
+                  
+                  <div class="col-metrics">
+                    <div class="metrics-display">
+                      <span v-if="log.tickets_processed">{{ log.tickets_processed }} tickets</span>
+                      <span v-if="log.users_created">{{ log.users_created }} users</span>
+                      <span v-if="log.users_skipped">{{ log.users_skipped }} skipped</span>
+                    </div>
+                  </div>
+                  
+                  <div class="col-duration">
+                    <div class="duration-expand">
+                      <span v-if="log.execution_time">{{ log.execution_time }}s</span>
+                      <span v-else>—</span>
+                      <i class="fas fa-chevron-down expand-icon" :class="{ 'expanded': log.expanded }"></i>
+                    </div>
                   </div>
                 </div>
                 
-                <div class="col-trigger">
-                  <span class="trigger-badge" :class="log.triggered_by === 'scheduler' ? 'auto' : 'manual'">
-                    <i class="fas" :class="log.triggered_by === 'scheduler' ? 'fa-robot' : 'fa-user'"></i>
-                    {{ log.triggered_by === 'scheduler' ? ' Auto' : ' Manual' }}
-                  </span>
-                </div>
-                
-                <div class="col-metrics">
-                  <div class="metrics-display">
-                    <span v-if="log.tickets_processed">{{ log.tickets_processed }} tickets</span>
-                    <span v-if="log.users_created">{{ log.users_created }} users</span>
-                    <span v-if="log.users_skipped">{{ log.users_skipped }} skipped</span>
+                <!-- Detailed execution logs -->
+                <div v-if="log.expanded" class="log-details">
+                  <div class="log-details-header">
+                    <h4><i class="fas fa-list-alt"></i> Detailed Execution Log</h4>
+                    <small>Log ID: {{ log.log_id }}</small>
                   </div>
-                </div>
-                
-                <div class="col-duration">
-                  <span v-if="log.execution_time">{{ log.execution_time }}s</span>
-                  <span v-else>—</span>
+                  <div class="log-output">
+                    <pre v-if="log.output">{{ log.output }}</pre>
+                    <p v-else class="no-details">No detailed execution log available for this sync.</p>
+                    
+                    <div v-if="log.error" class="log-error">
+                      <h5><i class="fas fa-exclamation-triangle"></i> Error Details</h5>
+                      <pre>{{ log.error }}</pre>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1635,6 +1657,145 @@ export default {
 .metrics-display span {
   display: block;
   font-weight: 500;
+}
+
+/* Log Row Container for expandable logs */
+.log-row-container {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.log-row-container:last-child {
+  border-bottom: none;
+}
+
+.log-row {
+  display: grid;
+  grid-template-columns: 100px 160px 120px 180px 80px;
+  font-size: 0.8rem;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+
+.log-row:hover {
+  background-color: #f8fafc;
+}
+
+.duration-expand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.expand-icon {
+  font-size: 0.7rem;
+  color: #64748b;
+  transition: transform 0.3s ease;
+}
+
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+/* Log Details (Expanded View) */
+.log-details {
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  padding: 16px 20px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+}
+
+.log-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.log-details-header h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a202c;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.log-details-header small {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.log-output {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.log-output pre {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #374151;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.log-output .no-details {
+  margin: 0;
+  color: #64748b;
+  font-style: italic;
+  font-family: inherit;
+  font-size: 0.8rem;
+}
+
+.log-error {
+  margin-top: 12px;
+  padding: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+}
+
+.log-error h5 {
+  margin: 0 0 8px 0;
+  font-size: 0.8rem;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.log-error pre {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #b91c1c;
+  background: white;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #f87171;
 }
 
 /* Coming Soon */
