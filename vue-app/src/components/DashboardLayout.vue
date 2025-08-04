@@ -3,45 +3,45 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
       <div class="logo">
-        <h2>Helpdesk CRM</h2>
+        <img src="/hd-logo-200.png" alt="Helpdesk CRM" class="logo-image">
       </div>
       
       <nav class="navigation">
         <ul>
           <li>
             <router-link to="/dashboard" class="nav-item" :class="{ active: $route.path === '/dashboard' }">
-              <i class="icon"></i>
+              <i class="fas fa-tachometer-alt icon"></i>
               <span>Dashboard</span>
             </router-link>
           </li>
           <li>
             <router-link to="/onboarding" class="nav-item" :class="{ active: $route.path === '/onboarding' }">
-              <i class="icon"></i>
+              <i class="fas fa-user-plus icon"></i>
               <span>Onboard Users</span>
             </router-link>
           </li>
           <li>
             <router-link to="/print-onboarding" class="nav-item" :class="{ active: $route.path === '/print-onboarding' }">
-              <i class="icon"></i>
+              <i class="fas fa-print icon"></i>
               <span>Print Onboarding Info</span>
             </router-link>
           </li>
 
           <li>
             <router-link to="/offboarding" class="nav-item" :class="{ active: $route.path === '/offboarding' }">
-              <i class="icon"></i>
+              <i class="fas fa-user-minus icon"></i>
               <span>Offboard Users</span>
             </router-link>
           </li>
           <li>
             <router-link to="/offboarded-users" class="nav-item" :class="{ active: $route.path === '/offboarded-users' }">
-              <i class="icon"></i>
+              <i class="fas fa-users-slash icon"></i>
               <span>Offboarded Users Info</span>
             </router-link>
           </li>
                     <li>
             <router-link to="/settings" class="nav-item" :class="{ active: $route.path === '/settings' }">
-              <i class="icon"></i>
+              <i class="fas fa-cog icon"></i>
               <span>Settings</span>
             </router-link>
           </li>
@@ -54,7 +54,7 @@
       <!-- Top Header -->
       <header class="top-header">
         <div class="header-left">
-          <h1>{{ pageTitle }}</h1>
+          <!-- <h1>{{ pageTitle }}</h1> -->
         </div>
         <div class="header-right">
           <!-- <div class="search-box">
@@ -299,6 +299,17 @@ export default {
 .logo {
   padding: 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.logo-image {
+  max-width: 150px;
+  max-height: 60px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 
 .logo h2 {
@@ -309,7 +320,7 @@ export default {
 
 .navigation ul {
   list-style: none;
-  padding: 20px 0;
+  padding: 0px 0;
   margin: 0;
 }
 
@@ -331,7 +342,7 @@ export default {
 
 .nav-item .icon {
   margin-right: 12px;
-  font-size: 1.2rem;
+  font-size: 0.9rem;
 }
 
 /* Main Content Styles */

@@ -499,22 +499,22 @@ export default {
 }
 
 .card-icon.completed {
-  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  background: linear-gradient(135deg, #70f6a1 0%, #15803d 100%);
   box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
 }
 
 .card-icon.in-progress {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: linear-gradient(135deg, #f4c174 0%, #f09630 100%);
   box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
 }
 
 .card-icon.pending {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #6be6f1 0%, #20b7c2 100%);
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .card-icon.offboarded {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  background: linear-gradient(135deg, #f58181 0%, #fa3737 100%);
   box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
 }
 
