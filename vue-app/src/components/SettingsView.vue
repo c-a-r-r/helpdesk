@@ -217,8 +217,13 @@
           <h2>Freshservice Sync Management</h2>
         </div>
         <div class="header-actions">
-          <button class="btn-outline" @click="refreshSyncStatus">
-            <i class="fas fa-refresh"></i> Refresh Status
+          <button 
+            class="btn-outline" 
+            @click="refreshSyncStatus"
+            :disabled="isRefreshingStatus"
+          >
+            <i class="fas" :class="isRefreshingStatus ? 'fa-spinner fa-spin' : 'fa-refresh'"></i> 
+            {{ isRefreshingStatus ? 'Refreshing...' : 'Refresh Status' }}
           </button>
           <button 
             class="btn-primary" 
@@ -328,7 +333,7 @@
           </div>
         </div>
         
-        <!-- Sync Configuration -->
+        <!-- Sync Configuration
         <div class="config-section">
           <h3><i class="fas fa-cogs"></i> Sync Configuration</h3>
           <div class="config-grid">
@@ -349,7 +354,7 @@
               <p>Freshservice API</p>
             </div>
           </div>
-        </div>
+        </div> -->
 
         <!-- Sync Logs Section -->
         <div class="config-section">
@@ -357,7 +362,14 @@
             <h3><i class="fas fa-list-alt"></i> Recent Sync Activity</h3>
             <div class="logs-actions">
               <span class="logs-subtitle">{{ syncLogs.length }} sync records</span>
-              <button class="btn-outline" @click="fetchSyncLogs">� Refresh Logs</button>
+              <button 
+                class="btn-outline" 
+                @click="fetchSyncLogs"
+                :disabled="isRefreshingLogs"
+              >
+                <i class="fas" :class="isRefreshingLogs ? 'fa-spinner fa-spin' : 'fa-sync-alt'"></i> 
+                {{ isRefreshingLogs ? 'Refreshing...' : 'Refresh Logs' }}
+              </button>
             </div>
           </div>
           
@@ -499,6 +511,8 @@ export default {
         totalJobs: 0
       },
       isManualSyncRunning: false,
+      isRefreshingStatus: false,
+      isRefreshingLogs: false,
       manualSyncResult: null,
       lastManualSync: {
         timestamp: null,
@@ -621,6 +635,9 @@ export default {
     
     // Sync Management Methods
     async refreshSyncStatus() {
+      if (this.isRefreshingStatus) return
+      
+      this.isRefreshingStatus = true
       try {
         const response = await fetch('/api/v1/dashboard/scheduler-status')
         if (!response.ok) {
@@ -636,6 +653,14 @@ export default {
             lastAttempt: data.status.last_sync_attempt || null,
             lastSuccess: data.status.last_sync_success || null,
             failures: data.status.consecutive_failures || 0
+          }
+          
+          // Update lastManualSync from API if available
+          if (data.status.last_manual_sync) {
+            this.lastManualSync = {
+              timestamp: data.status.last_manual_sync.timestamp || null,
+              result: data.status.last_manual_sync.result || null
+            }
           }
         } else {
           console.warn('Scheduler status unavailable:', data)
@@ -658,6 +683,8 @@ export default {
           lastSuccess: null,
           failures: 0
         }
+      } finally {
+        this.isRefreshingStatus = false
       }
     },
     
@@ -736,6 +763,9 @@ export default {
     },
 
     async fetchSyncLogs() {
+      if (this.isRefreshingLogs) return
+      
+      this.isRefreshingLogs = true
       try {
         // Fetch from dedicated sync_logs table
         const response = await fetch('/api/v1/admin/sync/logs?limit=50')
@@ -759,8 +789,23 @@ export default {
               tickets_processed: log.tickets_processed || 0,
               users_created: log.users_created || 0,
               users_skipped: log.users_skipped || 0,
-              triggered_by: log.triggered_by === 'Automated Scheduler' ? 'scheduler' : 'manual'
+              triggered_by: log.triggered_by === 'automated_scheduler' ? 'scheduler' : 'manual'
             }))
+            
+            // Find the most recent manual sync to populate lastManualSync
+            const manualSyncs = this.syncLogs.filter(log => log.triggered_by === 'manual')
+            if (manualSyncs.length > 0) {
+              const lastManual = manualSyncs[0] // Already sorted by most recent
+              this.lastManualSync = {
+                timestamp: lastManual.executed_at,
+                result: {
+                  users_created: lastManual.users_created,
+                  tickets_processed: lastManual.tickets_processed,
+                  users_skipped: lastManual.users_skipped
+                }
+              }
+            }
+            
             console.log('Sync logs loaded successfully:', this.syncLogs.length, 'records')
           } else {
             console.error('API returned no logs or error:', data)
@@ -773,6 +818,8 @@ export default {
       } catch (error) {
         console.error('Error fetching sync logs:', error)
         this.syncLogs = []
+      } finally {
+        this.isRefreshingLogs = false
       }
     },
 

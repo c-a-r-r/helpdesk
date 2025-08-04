@@ -429,13 +429,45 @@ def get_recent_activity(
         }]
 
 @router.get("/dashboard/scheduler-status")
-def get_scheduler_status():
+def get_scheduler_status(db: Session = Depends(get_db)):
     """Get scheduler status for monitoring"""
     try:
         from scheduler import background_scheduler
+        scheduler_status = background_scheduler.get_status()
+        
+        # Get last manual sync information from sync_logs
+        last_manual_sync = None
+        try:
+            last_manual_query = db.execute(text("""
+                SELECT started_at, status, tickets_processed, users_created, users_skipped
+                FROM sync_logs 
+                WHERE triggered_by = 'manual_trigger' 
+                ORDER BY started_at DESC 
+                LIMIT 1
+            """))
+            last_manual_result = last_manual_query.fetchone()
+            
+            if last_manual_result:
+                last_manual_sync = {
+                    "timestamp": last_manual_result[0].isoformat() if last_manual_result[0] else None,
+                    "result": {
+                        "status": last_manual_result[1],
+                        "tickets_processed": last_manual_result[2] or 0,
+                        "users_created": last_manual_result[3] or 0,
+                        "users_skipped": last_manual_result[4] or 0
+                    }
+                }
+            
+        except Exception as db_error:
+            logger.warning(f"Could not fetch last manual sync: {db_error}")
+        
+        # Create the final response with last_manual_sync included
+        final_status = dict(scheduler_status)
+        final_status["last_manual_sync"] = last_manual_sync
+        
         return {
             "success": True,
-            "status": background_scheduler.get_status()
+            "status": final_status
         }
     except Exception as e:
         return {
@@ -443,7 +475,8 @@ def get_scheduler_status():
             "error": str(e),
             "status": {
                 "running": False,
-                "error": "Scheduler not available"
+                "error": "Scheduler not available",
+                "last_manual_sync": None
             }
         }
 
