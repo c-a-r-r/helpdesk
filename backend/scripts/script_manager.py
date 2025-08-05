@@ -22,6 +22,7 @@ class ScriptManager:
         self.jumpcloud_dir = self.scripts_dir / "jumpcloud"
         self.google_dir = self.scripts_dir / "google_workspace"
         self.freshservice_dir = self.scripts_dir / "freshservice"
+        self.offboarding_dir = self.scripts_dir / "offboarding"
     
     async def execute_script(self, 
                            script_type: str, 
@@ -168,6 +169,8 @@ class ScriptManager:
             return self.google_dir / f"{script_name}.py"
         elif script_type == "freshservice":
             return self.freshservice_dir / f"{script_name}.py"
+        elif script_type == "offboarding":
+            return self.offboarding_dir / f"{script_name}.py"
         else:
             raise ValueError(f"Unknown script type: {script_type}")
     
@@ -176,7 +179,8 @@ class ScriptManager:
         return {
             "jumpcloud": self._get_scripts_in_dir(self.jumpcloud_dir),
             "google": self._get_scripts_in_dir(self.google_dir),
-            "freshservice": self._get_scripts_in_dir(self.freshservice_dir)
+            "freshservice": self._get_scripts_in_dir(self.freshservice_dir),
+            "offboarding": self._get_scripts_in_dir(self.offboarding_dir)
         }
     
     def _get_scripts_in_dir(self, directory: Path) -> list:

@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc
-from models import Onboarding, Offboarding, DepartmentMapping, AuditLog, ScriptLog
-from schemas import OnboardingCreate, OnboardingUpdate, OffboardingCreate, OffboardingUpdate, DepartmentMappingCreate, DepartmentMappingUpdate, ScriptLogCreate
+from models import Onboarding, Offboarding, DepartmentMapping, AuditLog, ScriptLog, OffboardingScriptLog
+from schemas import OnboardingCreate, OnboardingUpdate, OffboardingCreate, OffboardingUpdate, DepartmentMappingCreate, DepartmentMappingUpdate, ScriptLogCreate, OffboardingScriptLogCreate
 from typing import List, Optional
 import json
 import string
@@ -361,3 +361,75 @@ class OffboardingCRUD:
         )
         db.add(audit_log)
         db.commit()
+
+class OffboardingScriptLogCRUD:
+    @staticmethod
+    def create(db: Session, log_data) -> 'OffboardingScriptLog':
+        """Create a new offboarding script log entry"""
+        from models import OffboardingScriptLog
+        import json
+        
+        # Convert schema object to dict
+        if hasattr(log_data, 'model_dump'):
+            data = log_data.model_dump()
+        else:
+            data = log_data
+        
+        # Convert additional_params dict to JSON string if needed
+        if data.get('additional_params') and isinstance(data['additional_params'], dict):
+            data['additional_params'] = json.dumps(data['additional_params'])
+        
+        db_log = OffboardingScriptLog(**data)
+        db.add(db_log)
+        db.commit()
+        db.refresh(db_log)
+        return db_log
+
+    @staticmethod
+    def update_completion(db: Session, log_id: int, status: str, output: str = None, error_message: str = None, execution_time_seconds: int = None):
+        """Update log with completion details"""
+        from models import OffboardingScriptLog, ScriptStatus
+        from datetime import datetime
+        
+        log = db.query(OffboardingScriptLog).filter(OffboardingScriptLog.id == log_id).first()
+        if log:
+            # Map status string to enum
+            if status == "completed":
+                log.status = ScriptStatus.SUCCESS
+            elif status == "failed":
+                log.status = ScriptStatus.FAILED
+            else:
+                log.status = ScriptStatus.RUNNING
+                
+            log.output = output
+            log.error_message = error_message
+            log.execution_time_seconds = execution_time_seconds
+            log.completed_at = datetime.now()
+            db.commit()
+            db.refresh(log)
+        return log
+
+    @staticmethod
+    def get_by_offboarding_id(db: Session, offboarding_id: int, limit: int = 20):
+        """Get all script logs for a specific offboarding record"""
+        from models import OffboardingScriptLog
+        
+        return db.query(OffboardingScriptLog).filter(
+            OffboardingScriptLog.offboarding_id == offboarding_id
+        ).order_by(desc(OffboardingScriptLog.started_at)).limit(limit).all()
+
+    @staticmethod
+    def get_all(db: Session, skip: int = 0, limit: int = 100):
+        """Get all offboarding script logs"""
+        from models import OffboardingScriptLog
+        
+        return db.query(OffboardingScriptLog).order_by(
+            desc(OffboardingScriptLog.started_at)
+        ).offset(skip).limit(limit).all()
+
+    @staticmethod
+    def get(db: Session, log_id: int):
+        """Get a specific offboarding script log by ID"""
+        from models import OffboardingScriptLog
+        
+        return db.query(OffboardingScriptLog).filter(OffboardingScriptLog.id == log_id).first()

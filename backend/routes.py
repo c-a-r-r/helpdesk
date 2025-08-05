@@ -9,9 +9,10 @@ from schemas import (
     OnboardingCreate, OnboardingUpdate, OnboardingResponse,
     OffboardingCreate, OffboardingUpdate, OffboardingResponse,
     DepartmentMappingCreate, DepartmentMappingUpdate, DepartmentMappingResponse,
-    ScriptExecutionRequest, ScriptExecutionResponse, ScriptLogResponse
+    ScriptExecutionRequest, ScriptExecutionResponse, ScriptLogResponse,
+    OffboardingScriptLogResponse
 )
-from crud import OnboardingCRUD, OffboardingCRUD, DepartmentMappingCRUD, ScriptLogCRUD
+from crud import OnboardingCRUD, OffboardingCRUD, DepartmentMappingCRUD, ScriptLogCRUD, OffboardingScriptLogCRUD
 from models import OnboardingStatus
 from scripts.script_manager import script_manager
 from auth import parse_user_from_sso_claims, UserPermission
@@ -861,4 +862,145 @@ def delete_offboarding(
     if not success:
         raise HTTPException(status_code=404, detail="Offboarding record not found")
     return {"message": "Offboarding record deleted successfully"}
+
+# Offboarding Script Log endpoints
+@router.get("/offboarding/{offboarding_id}/script-logs", response_model=List[OffboardingScriptLogResponse])
+def get_offboarding_script_logs(
+    offboarding_id: int,
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """Get script logs for a specific offboarding record"""
+    logs = OffboardingScriptLogCRUD.get_by_offboarding_id(db, offboarding_id, limit)
+    return logs
+
+@router.get("/offboarding/script-logs", response_model=List[OffboardingScriptLogResponse])
+def get_all_offboarding_script_logs(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """Get all offboarding script logs"""
+    logs = OffboardingScriptLogCRUD.get_all(db, skip, limit)
+    return logs
+
+@router.get("/offboarding/script-logs/{log_id}", response_model=OffboardingScriptLogResponse)
+def get_offboarding_script_log(
+    log_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get a specific offboarding script log"""
+    log = OffboardingScriptLogCRUD.get(db, log_id)
+    if not log:
+        raise HTTPException(status_code=404, detail="Script log not found")
+    return log
+
+@router.post("/offboarding/{offboarding_id}/execute-script", response_model=ScriptExecutionResponse)
+async def execute_offboarding_script(
+    offboarding_id: int,
+    request: ScriptExecutionRequest,
+    user_email: str = Query(..., description="Email of the user executing the script"),
+    user_claims: Optional[str] = Query(None, description="SSO claims JSON for permission checking"),
+    db: Session = Depends(get_db)
+):
+    """Execute an offboarding script with specialized logging"""
+    try:
+        # Check user permissions for script execution
+        if user_claims:
+            try:
+                import json
+                claims = json.loads(user_claims)
+                authenticated_user = parse_user_from_sso_claims(claims)
+                
+                if not authenticated_user.has_permission(UserPermission.EXECUTE_SCRIPTS):
+                    raise HTTPException(
+                        status_code=403, 
+                        detail=f"User {user_email} does not have permission to execute scripts. Required role: ADMIN or IT"
+                    )
+                    
+                print(f"Permission check passed for {user_email} with role {authenticated_user.role}")
+                
+            except json.JSONDecodeError:
+                print(f"Warning: Invalid SSO claims provided for {user_email}, skipping permission check")
+            except Exception as e:
+                print(f"Warning: Permission check failed for {user_email}: {e}, skipping permission check")
+        else:
+            # For development/testing, allow admin email without claims
+            admin_emails = ["cristian.rodriguez@americor.com", "admin@americor.com"]
+            if user_email not in admin_emails:
+                print(f"Warning: No SSO claims provided for {user_email}, skipping permission check in development mode")
+
+        # Get offboarding data
+        offboarding_data = OffboardingCRUD.get(db, offboarding_id)
+        if not offboarding_data:
+            raise HTTPException(status_code=404, detail="Offboarding record not found")
+
+        # Create log entry for the script execution
+        from schemas import OffboardingScriptLogCreate
+        log_data = OffboardingScriptLogCreate(
+            offboarding_id=offboarding_id,
+            script_type=request.script_type,
+            script_name=request.script_name,
+            executed_by=user_email,
+            additional_params=request.additional_params
+        )
+        script_log = OffboardingScriptLogCRUD.create(db, log_data)
+
+        # Convert offboarding data to dict for script execution
+        # For JumpCloud termination, we only need essential fields
+        script_input = {
+            "id": offboarding_data.id,
+            "first_name": offboarding_data.first_name,
+            "last_name": offboarding_data.last_name,
+            "company_email": offboarding_data.company_email,
+            # Optional fields that may be useful for logging/context
+            "requested_by": getattr(offboarding_data, 'requested_by', None),
+            "notes": getattr(offboarding_data, 'notes', None)
+        }
+        
+        try:
+            # Execute the script using the script manager
+            from scripts.script_manager import script_manager
+            import time
+            
+            start_time = time.time()
+            
+            # Execute the script
+            result = await script_manager.execute_script(
+                script_type=request.script_type,
+                script_name=request.script_name,
+                user_data=script_input,
+                db=db,
+                executed_by=user_email,
+                user_id=offboarding_id,
+                additional_params=request.additional_params
+            )
+            
+            end_time = time.time()
+            execution_time = int(end_time - start_time)
+            
+            # Update the log with results
+            OffboardingScriptLogCRUD.update_completion(
+                db, 
+                script_log.id,
+                status="completed" if result.get("success", False) else "failed",
+                output=result.get("output", ""),
+                error_message=result.get("error") if not result.get("success", False) else None,
+                execution_time_seconds=execution_time
+            )
+            
+            return result
+            
+        except Exception as script_error:
+            # Update log with error
+            OffboardingScriptLogCRUD.update_completion(
+                db,
+                script_log.id,
+                status="failed",
+                error_message=str(script_error)
+            )
+            raise
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Offboarding script execution failed: {str(e)}")
 

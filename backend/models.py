@@ -153,3 +153,21 @@ class ScriptLog(Base):
     # Timestamps
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
+
+class OffboardingScriptLog(Base):
+    __tablename__ = "offboarding_script_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    offboarding_id = Column(Integer, nullable=False)  # Reference to offboarding record ID
+    script_type = Column(String(50), nullable=False)  # 'offboarding'
+    script_name = Column(String(100), nullable=False)  # 'terminate_user_jumpcloud', 'terminate_user_google', 'remove_automox_agent'
+    status = Column(Enum(ScriptStatus), nullable=False)
+    output = Column(Text, nullable=True)
+    error_message = Column(Text, nullable=True)
+    executed_by = Column(String(255), nullable=False)  # Email of user who ran the script
+    execution_time_seconds = Column(Integer, nullable=True)
+    additional_params = Column(Text, nullable=True)  # JSON string of additional parameters
+    
+    # Timestamps
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)

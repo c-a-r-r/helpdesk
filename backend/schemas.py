@@ -255,3 +255,27 @@ class OffboardingResponse(OffboardingBase):
 
     class Config:
         from_attributes = True
+
+# Offboarding Script Log schemas
+class OffboardingScriptLogBase(BaseModel):
+    offboarding_id: int
+    script_type: str
+    script_name: str
+    executed_by: str
+    status: Optional[ScriptStatus] = ScriptStatus.RUNNING
+    output: Optional[str] = None
+    error_message: Optional[str] = None
+    execution_time_seconds: Optional[int] = None
+    additional_params: Optional[str] = None
+
+class OffboardingScriptLogCreate(OffboardingScriptLogBase):
+    # Override to accept dict for additional_params
+    additional_params: Optional[Dict[str, Any]] = None
+
+class OffboardingScriptLogResponse(OffboardingScriptLogBase):
+    id: int
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
