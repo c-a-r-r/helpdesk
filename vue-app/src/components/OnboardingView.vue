@@ -101,13 +101,13 @@
               <th>Department</th>
               <th>Title</th>
               <th>Username</th>
-              <th>Manager</th>
               <th class="sortable" @click="sortByStatus">
                 Status 
                 <i class="fa-solid fa-sort" v-if="!statusSortOrder"></i>
                 <i class="fa-solid fa-sort-up" v-if="statusSortOrder === 'asc'"></i>
                 <i class="fa-solid fa-sort-down" v-if="statusSortOrder === 'desc'"></i>
               </th>
+              <th>Created By</th>
               <th>Start Date</th>
               <th v-if="canEdit || canDelete" class="action-column">Actions</th>
             </tr>
@@ -120,10 +120,20 @@
               <td>{{ user.department }}</td>
               <td>{{ user.title }}</td>
               <td>{{ user.username }}</td>
-              <td>{{ user.manager }}</td>
               <td>
                 <span :class="getStatusClass(user.status)">
                   {{ user.status || 'Pending' }}
+                </span>
+              </td>
+              <td>
+                <span v-if="user.created_by === 'freshdesk-sync'" class="sync-indicator">
+                  <i class="fa-solid fa-sync"></i> Freshdesk Sync
+                </span>
+                <span v-else-if="user.created_by" class="user-indicator">
+                  <i class="fa-solid fa-user"></i> {{ user.created_by }}
+                </span>
+                <span v-else class="unknown-indicator">
+                  <i class="fa-solid fa-question"></i> Unknown
                 </span>
               </td>
               <td>{{ formatDate(user.start_date) }}</td>
@@ -807,8 +817,8 @@ export default {
       })
       
       try {
-        // Get current user email (for now using a placeholder - TODO: get from auth context)
-        const currentUserEmail = 'admin@americor.com'
+        // Get current user email for created_by tracking
+        const currentUserEmail = this.getCurrentUserEmail()
         
         // Create new users
         for (const user of this.users) {
@@ -819,7 +829,7 @@ export default {
             display_name: user.displayName || `${user.firstName} ${user.lastName}`,
             personal_email: user.personalEmail,
             company_email: user.companyEmail,
-            phone_number: user.phoneNumber || '555-0000',
+            phone_number: user.phoneNumber ? String(user.phoneNumber) : '555-0000',
             title: user.title,
             manager: user.managerEmail,
             department: user.department,
@@ -835,9 +845,9 @@ export default {
             street_name: user.streetName || '123 Main St',
             city: user.city || 'City',
             state: user.state || 'CA',
-            zip_code: user.zipCode || '12345',
+            zip_code: user.zipCode ? String(user.zipCode) : '12345',
             hostname: user.hostname,
-            ticket_number: user.ticketNumber,
+            ticket_number: user.ticketNumber ? String(user.ticketNumber) : null,
             notes: user.notes || null,
             extra_details: user.extraDetails || null
           }
@@ -880,19 +890,23 @@ export default {
           
           // Try to get email from JumpCloud claims
           if (claims.email) {
-            console.log('Found email in claims:', claims.email)
-            return claims.email
+            const email = Array.isArray(claims.email) ? claims.email[0] : claims.email
+            console.log('Found email in claims:', email)
+            return email
           }
           
           // Try preferred_username
           if (claims.preferred_username && claims.preferred_username.includes('@')) {
-            console.log('Found email in preferred_username:', claims.preferred_username)
-            return claims.preferred_username
+            const email = Array.isArray(claims.preferred_username) ? claims.preferred_username[0] : claims.preferred_username
+            console.log('Found email in preferred_username:', email)
+            return email
           }
           
           // If no direct email, construct one from name fields
           if (claims.given_name && claims.family_name) {
-            const constructedEmail = `${claims.given_name.toLowerCase()}.${claims.family_name.toLowerCase()}@americor.com`
+            const firstName = Array.isArray(claims.given_name) ? claims.given_name[0] : claims.given_name
+            const lastName = Array.isArray(claims.family_name) ? claims.family_name[0] : claims.family_name
+            const constructedEmail = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@americor.com`
             console.log('Constructed email from name:', constructedEmail)
             return constructedEmail
           }
@@ -910,12 +924,14 @@ export default {
           if (tokenParts.length === 3) {
             const payload = JSON.parse(atob(tokenParts[1]))
             if (payload.email) {
-              console.log('Found email in JWT token:', payload.email)
-              return payload.email
+              const email = Array.isArray(payload.email) ? payload.email[0] : payload.email
+              console.log('Found email in JWT token:', email)
+              return email
             }
             if (payload.preferred_username && payload.preferred_username.includes('@')) {
-              console.log('Found email in JWT preferred_username:', payload.preferred_username)
-              return payload.preferred_username
+              const email = Array.isArray(payload.preferred_username) ? payload.preferred_username[0] : payload.preferred_username
+              console.log('Found email in JWT preferred_username:', email)
+              return email
             }
           }
         } catch (error) {
@@ -1517,6 +1533,44 @@ export default {
   font-size: 0.8rem;
   font-weight: 500;
 }
+
+/* Created by indicators */
+.sync-indicator {
+  background: #e0f2fe;
+  color: #0277bd;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.user-indicator {
+  background: #f3e8ff;
+  color: #7c3aed;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.unknown-indicator {
+  background: #f3f4f6;
+  color: #6b7280;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .action-column {
   width: 90px;
   text-align: center;

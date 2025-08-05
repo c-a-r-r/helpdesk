@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from datetime import datetime
 from typing import Optional, Dict, Any
-from models import AddressType, OnboardingStatus, ScriptStatus
+from models import AddressType, OnboardingStatus, OffboardingStatus, ScriptStatus
 
 class OnboardingBase(BaseModel):
     company: str = "Americor"
@@ -146,10 +146,12 @@ class OnboardingUpdate(BaseModel):
     extension: Optional[str] = None
     notes: Optional[str] = None
     extra_details: Optional[str] = None
+    created_by: Optional[str] = None
 
 class OnboardingResponse(OnboardingBase):
     id: int
     status: OnboardingStatus
+    created_by: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
@@ -211,6 +213,44 @@ class ScriptLogCreate(ScriptLogBase):
 class ScriptLogResponse(ScriptLogBase):
     id: int
     started_at: datetime
+    completed_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+# Offboarding schemas
+class OffboardingBase(BaseModel):
+    first_name: str
+    last_name: str
+    company_email: EmailStr
+    hostname: Optional[str] = None
+    requested_by: EmailStr
+    created_by: Optional[str] = None  # User who created the offboarding record (auto-set)
+    password: Optional[str] = None  # 16-character generated password
+    notes: Optional[str] = None
+
+class OffboardingCreate(OffboardingBase):
+    # Override password to make it optional on creation since it's auto-generated
+    password: Optional[str] = None
+    # Override created_by to make it optional on creation since it's auto-set
+    created_by: Optional[str] = None
+
+class OffboardingUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    company_email: Optional[EmailStr] = None
+    hostname: Optional[str] = None
+    requested_by: Optional[EmailStr] = None
+    created_by: Optional[str] = None
+    password: Optional[str] = None
+    status: Optional[OffboardingStatus] = None
+    notes: Optional[str] = None
+
+class OffboardingResponse(OffboardingBase):
+    id: int
+    status: OffboardingStatus
+    created_at: datetime
+    updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
     class Config:

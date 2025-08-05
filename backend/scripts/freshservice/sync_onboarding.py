@@ -243,12 +243,12 @@ class FreshserviceOnboardingSync(BaseUserScript):
                     username, first_name, last_name, display_name, company_email, personal_email, title, 
                     department, manager, start_date, phone_number, company, status, notes, 
                     ticket_number, location_first_day, address_type, street_name, city, state, zip_code,
-                    password, created_at, updated_at
+                    password, created_by, created_at, updated_at
                 ) VALUES (
                     :username, :first_name, :last_name, :display_name, :company_email, :personal_email, :title,
                     :department, :manager, :start_date, :phone_number, :company, :status, :notes,
                     :ticket_number, :location_first_day, :address_type, :street_name, :city, :state, :zip_code,
-                    :password, NOW(), NOW()
+                    :password, :created_by, NOW(), NOW()
                 )
             """)
             
@@ -277,7 +277,8 @@ class FreshserviceOnboardingSync(BaseUserScript):
                 "city": user_data["city"],
                 "state": user_data["state"],
                 "zip_code": user_data["zip_code"],
-                "password": password
+                "password": password,
+                "created_by": "freshdesk-sync"  # Mark as sync-created
             })
             
             session.commit()

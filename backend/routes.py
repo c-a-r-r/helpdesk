@@ -7,10 +7,11 @@ import logging
 from database import get_db
 from schemas import (
     OnboardingCreate, OnboardingUpdate, OnboardingResponse,
+    OffboardingCreate, OffboardingUpdate, OffboardingResponse,
     DepartmentMappingCreate, DepartmentMappingUpdate, DepartmentMappingResponse,
     ScriptExecutionRequest, ScriptExecutionResponse, ScriptLogResponse
 )
-from crud import OnboardingCRUD, DepartmentMappingCRUD, ScriptLogCRUD
+from crud import OnboardingCRUD, OffboardingCRUD, DepartmentMappingCRUD, ScriptLogCRUD
 from models import OnboardingStatus
 from scripts.script_manager import script_manager
 from auth import parse_user_from_sso_claims, UserPermission
@@ -796,4 +797,68 @@ async def get_sync_logs(
         db.rollback()  # Rollback on error
         logger.error(f"Error fetching sync logs: {e}")
         return {"success": False, "error": str(e), "logs": []}
+
+# Offboarding endpoints
+@router.post("/offboarding/", response_model=OffboardingResponse)
+def create_offboarding(
+    offboarding: OffboardingCreate,
+    user_email: str = Query(..., description="Email of the user creating the record"),
+    db: Session = Depends(get_db)
+):
+    """Create a new offboarding record"""
+    # Check if company email already exists
+    existing = OffboardingCRUD.get_by_email(db, offboarding.company_email)
+    if existing:
+        raise HTTPException(status_code=400, detail="Offboarding record for this email already exists")
+    
+    # Set the created_by field from the authenticated user
+    if not offboarding.created_by:
+        offboarding.created_by = user_email
+    
+    return OffboardingCRUD.create(db, offboarding, user_email)
+
+@router.get("/offboarding/{offboarding_id}", response_model=OffboardingResponse)
+def get_offboarding(offboarding_id: int, db: Session = Depends(get_db)):
+    """Get a specific offboarding record"""
+    offboarding = OffboardingCRUD.get(db, offboarding_id)
+    if not offboarding:
+        raise HTTPException(status_code=404, detail="Offboarding record not found")
+    return offboarding
+
+@router.get("/offboarding/", response_model=List[OffboardingResponse])
+def get_all_offboarding(
+    skip: int = 0,
+    limit: int = 100,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Get all offboarding records with optional search"""
+    if search:
+        return OffboardingCRUD.search(db, search, skip, limit)
+    return OffboardingCRUD.get_all(db, skip, limit)
+
+@router.put("/offboarding/{offboarding_id}", response_model=OffboardingResponse)
+def update_offboarding(
+    offboarding_id: int,
+    offboarding_update: OffboardingUpdate,
+    user_email: str = Query(..., description="Email of the user updating the record"),
+    db: Session = Depends(get_db)
+):
+    """Update an offboarding record"""
+    offboarding = OffboardingCRUD.update(db, offboarding_id, offboarding_update, user_email)
+    if not offboarding:
+        raise HTTPException(status_code=404, detail="Offboarding record not found")
+    return offboarding
+
+@router.delete("/offboarding/{offboarding_id}")
+def delete_offboarding(
+    offboarding_id: int,
+    user_email: str = Query(..., description="Email of the user deleting the record"),
+    db: Session = Depends(get_db)
+):
+    """Delete an offboarding record"""
+    success = OffboardingCRUD.delete(db, offboarding_id, user_email)
+    if not success:
+        raise HTTPException(status_code=404, detail="Offboarding record not found")
+    return {"message": "Offboarding record deleted successfully"}
 

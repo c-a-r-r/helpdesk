@@ -1,14 +1,18 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc
-from models import Onboarding, DepartmentMapping, AuditLog, ScriptLog
-from schemas import OnboardingCreate, OnboardingUpdate, DepartmentMappingCreate, DepartmentMappingUpdate, ScriptLogCreate
+from models import Onboarding, Offboarding, DepartmentMapping, AuditLog, ScriptLog
+from schemas import OnboardingCreate, OnboardingUpdate, OffboardingCreate, OffboardingUpdate, DepartmentMappingCreate, DepartmentMappingUpdate, ScriptLogCreate
 from typing import List, Optional
 import json
+import string
+import secrets
 
 class OnboardingCRUD:
     @staticmethod
     def create(db: Session, onboarding: OnboardingCreate, user_email: str) -> Onboarding:
         db_onboarding = Onboarding(**onboarding.dict())
+        # Set created_by field - use user_email if provided, otherwise it's from sync
+        db_onboarding.created_by = user_email if user_email else 'freshdesk-sync'
         db.add(db_onboarding)
         db.commit()
         db.refresh(db_onboarding)
@@ -236,3 +240,124 @@ class ScriptLogCRUD:
         db.commit()
         db.refresh(db_log)
         return db_log
+
+def generate_password(length: int = 16) -> str:
+    """Generate a secure random password of specified length."""
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+class OffboardingCRUD:
+    @staticmethod
+    def create(db: Session, offboarding: OffboardingCreate, user_email: str) -> Offboarding:
+        # Create a copy of the data and generate password if not provided
+        offboarding_data = offboarding.dict()
+        if not offboarding_data.get('password'):
+            offboarding_data['password'] = generate_password(16)
+        
+        # Set created_by field if not provided
+        if not offboarding_data.get('created_by'):
+            offboarding_data['created_by'] = user_email
+        
+        db_offboarding = Offboarding(**offboarding_data)
+        db.add(db_offboarding)
+        db.commit()
+        db.refresh(db_offboarding)
+        
+        # Create audit log
+        OffboardingCRUD._create_audit_log(
+            db, "offboarding", db_offboarding.id, "CREATE", 
+            None, offboarding_data, user_email
+        )
+        
+        return db_offboarding
+
+    @staticmethod
+    def get(db: Session, offboarding_id: int) -> Optional[Offboarding]:
+        return db.query(Offboarding).filter(Offboarding.id == offboarding_id).first()
+
+    @staticmethod
+    def get_by_email(db: Session, email: str) -> Optional[Offboarding]:
+        return db.query(Offboarding).filter(Offboarding.company_email == email).first()
+
+    @staticmethod
+    def get_all(db: Session, skip: int = 0, limit: int = 100) -> List[Offboarding]:
+        return db.query(Offboarding).order_by(desc(Offboarding.created_at)).offset(skip).limit(limit).all()
+
+    @staticmethod
+    def search(db: Session, query: str, skip: int = 0, limit: int = 100) -> List[Offboarding]:
+        search_filter = or_(
+            Offboarding.first_name.ilike(f"%{query}%"),
+            Offboarding.last_name.ilike(f"%{query}%"),
+            Offboarding.company_email.ilike(f"%{query}%"),
+            Offboarding.hostname.ilike(f"%{query}%"),
+            Offboarding.requested_by.ilike(f"%{query}%")
+        )
+        return db.query(Offboarding).filter(search_filter).order_by(desc(Offboarding.created_at)).offset(skip).limit(limit).all()
+
+    @staticmethod
+    def update(db: Session, offboarding_id: int, offboarding_update: OffboardingUpdate, user_email: str) -> Optional[Offboarding]:
+        db_offboarding = OffboardingCRUD.get(db, offboarding_id)
+        if not db_offboarding:
+            return None
+        
+        # Store old values for audit log
+        old_values = {
+            column.name: getattr(db_offboarding, column.name)
+            for column in db_offboarding.__table__.columns
+        }
+        
+        # Update only provided fields
+        update_data = offboarding_update.dict(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(db_offboarding, field, value)
+        
+        db.commit()
+        db.refresh(db_offboarding)
+        
+        # Create audit log
+        new_values = {
+            column.name: getattr(db_offboarding, column.name)
+            for column in db_offboarding.__table__.columns
+        }
+        OffboardingCRUD._create_audit_log(
+            db, "offboarding", offboarding_id, "UPDATE", 
+            old_values, new_values, user_email
+        )
+        
+        return db_offboarding
+
+    @staticmethod
+    def delete(db: Session, offboarding_id: int, user_email: str) -> bool:
+        db_offboarding = OffboardingCRUD.get(db, offboarding_id)
+        if not db_offboarding:
+            return False
+        
+        # Store old values for audit log
+        old_values = {
+            column.name: getattr(db_offboarding, column.name)
+            for column in db_offboarding.__table__.columns
+        }
+        
+        db.delete(db_offboarding)
+        db.commit()
+        
+        # Create audit log
+        OffboardingCRUD._create_audit_log(
+            db, "offboarding", offboarding_id, "DELETE", 
+            old_values, None, user_email
+        )
+        
+        return True
+
+    @staticmethod
+    def _create_audit_log(db: Session, table_name: str, record_id: int, action: str, old_values: dict, new_values: dict, user_email: str):
+        audit_log = AuditLog(
+            table_name=table_name,
+            record_id=record_id,
+            action=action,
+            old_values=json.dumps(old_values, default=str) if old_values else None,
+            new_values=json.dumps(new_values, default=str) if new_values else None,
+            user_email=user_email
+        )
+        db.add(audit_log)
+        db.commit()

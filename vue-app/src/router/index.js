@@ -55,6 +55,21 @@ const router = createRouter({
           component: () => import('@/components/OffboardingView.vue')
         },
         {
+          path: '/offboarding/edit/:userId',
+          name: 'edit-offboarding',
+          component: () => import('@/components/EditOffboarding.vue')
+        },
+        {
+          path: '/offboarding/create',
+          name: 'create-offboarding',
+          component: () => import('@/components/CreateOffboarding.vue')
+        },
+        {
+          path: '/offboarding/tools/:userId',
+          name: 'offboarding-tools',
+          component: () => import('@/components/OffboardingToolsView.vue')
+        },
+        {
           path: '/offboarded-users',
           name: 'offboarded-users',
           component: () => import('@/components/OffboardedUsersView.vue')

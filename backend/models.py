@@ -14,6 +14,12 @@ class OnboardingStatus(enum.Enum):
     COMPLETED = "Completed"
     FAILED = "Failed"
 
+class OffboardingStatus(enum.Enum):
+    PENDING = "Pending"
+    IN_PROGRESS = "In Progress"
+    COMPLETED = "Completed"
+    FAILED = "Failed"
+
 class ScriptStatus(enum.Enum):
     SUCCESS = "success"
     FAILED = "failed"
@@ -67,6 +73,38 @@ class Onboarding(Base):
     ticket_number = Column(String(50), nullable=True)
     notes = Column(Text, nullable=True)
     extra_details = Column(Text, nullable=True)
+    
+    # Record Management
+    created_by = Column(String(255), nullable=True)  # Email of user who created record, or 'freshdesk-sync' for automated
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+class Offboarding(Base):
+    __tablename__ = "offboarding"
+
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # Personal Information
+    first_name = Column(String(100), nullable=False)
+    last_name = Column(String(100), nullable=False)
+    company_email = Column(String(255), nullable=False)
+    
+    # System Information
+    hostname = Column(String(100), nullable=True)
+    
+    # Request Information
+    requested_by = Column(String(255), nullable=False)
+    created_by = Column(String(255), nullable=False)  # User who created the offboarding record
+    
+    # Security Information
+    password = Column(String(16), nullable=True)  # 16-character generated password
+    
+    # Status and Tracking
+    status = Column(Enum(OffboardingStatus), default=OffboardingStatus.PENDING)
+    notes = Column(Text, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

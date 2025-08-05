@@ -383,8 +383,36 @@ export default {
           }
         })
         
-        // Get current user email (for now using a placeholder - TODO: get from auth context)
-        const currentUserEmail = 'admin@americor.com'
+        // Get current user email for created_by tracking
+        const currentUserEmail = this.getCurrentUserEmail()
+        
+        // Validate required fields before submission
+        const requiredFields = [
+          { field: 'firstName', label: 'First Name' },
+          { field: 'lastName', label: 'Last Name' },
+          { field: 'personalEmail', label: 'Personal Email' },
+          { field: 'title', label: 'Title' },
+          { field: 'managerEmail', label: 'Manager Email' },
+          { field: 'department', label: 'Department' },
+          { field: 'startDate', label: 'Start Date' }
+        ]
+        
+        const missingFields = requiredFields.filter(req => !this.user[req.field] || this.user[req.field].trim() === '')
+        if (missingFields.length > 0) {
+          alert(`Please fill in the following required fields:\n${missingFields.map(f => f.label).join('\n')}`)
+          return
+        }
+        
+        // Validate email formats
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(this.user.personalEmail)) {
+          alert('Please enter a valid personal email address')
+          return
+        }
+        if (this.user.managerEmail && !emailRegex.test(this.user.managerEmail)) {
+          alert('Please enter a valid manager email address')
+          return
+        }
         
         const onboardingData = {
           company: this.user.company,
@@ -393,7 +421,7 @@ export default {
           display_name: this.user.displayName,
           personal_email: this.user.personalEmail,
           company_email: this.user.companyEmail,
-          phone_number: this.user.phoneNumber,
+          phone_number: this.user.phoneNumber ? String(this.user.phoneNumber) : null,
           title: this.user.title,
           manager: this.user.managerEmail,
           department: this.user.department,
@@ -409,10 +437,10 @@ export default {
           street_name: this.user.streetName,
           city: this.user.city,
           state: this.user.state,
-          zip_code: this.user.zipCode,
+          zip_code: this.user.zipCode ? String(this.user.zipCode) : null,
           hostname: this.user.hostname,
-          ticket_number: this.user.ticketNumber,
-          extension: this.user.extension,
+          ticket_number: this.user.ticketNumber ? String(this.user.ticketNumber) : null,
+          extension: this.user.extension ? String(this.user.extension) : null,
           zoom: this.user.zoom,
           five9: this.user.five9,
           notes: this.user.notes || null,
@@ -420,12 +448,17 @@ export default {
         }
         
         console.log('Creating new user:', onboardingData)
+        console.log('User email:', currentUserEmail)
+        console.log('Full request URL:', `/api/v1/onboarding/?user_email=${encodeURIComponent(currentUserEmail)}`)
         await axios.post(`/api/v1/onboarding/?user_email=${encodeURIComponent(currentUserEmail)}`, onboardingData)
         
         alert('User created successfully!')
         this.goBack()
       } catch (error) {
         console.error('Error creating user:', error)
+        console.error('Error response:', error.response)
+        console.error('Error response data:', error.response?.data)
+        
         // Better error handling to show actual validation errors
         if (error.response?.data?.detail) {
           if (Array.isArray(error.response.data.detail)) {
@@ -469,6 +502,75 @@ export default {
     
     goBack() {
       this.$router.push({ name: 'onboarding' })
+    },
+
+    getCurrentUserEmail() {
+      // Try to get user data from JumpCloud SSO claims in sessionStorage
+      const userClaims = sessionStorage.getItem('userClaims')
+      if (userClaims) {
+        try {
+          const claims = JSON.parse(userClaims)
+          console.log('JumpCloud SSO claims received:', claims)
+          
+          // Try to get email from JumpCloud claims
+          if (claims.email) {
+            const email = Array.isArray(claims.email) ? claims.email[0] : claims.email
+            console.log('Found email in claims:', email)
+            return email
+          }
+          
+          // Try preferred_username
+          if (claims.preferred_username && claims.preferred_username.includes('@')) {
+            const email = Array.isArray(claims.preferred_username) ? claims.preferred_username[0] : claims.preferred_username
+            console.log('Found email in preferred_username:', email)
+            return email
+          }
+          
+          // If no direct email, construct one from name fields
+          if (claims.given_name && claims.family_name) {
+            const firstName = Array.isArray(claims.given_name) ? claims.given_name[0] : claims.given_name
+            const lastName = Array.isArray(claims.family_name) ? claims.family_name[0] : claims.family_name
+            const constructedEmail = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@americor.com`
+            console.log('Constructed email from name:', constructedEmail)
+            return constructedEmail
+          }
+          
+        } catch (error) {
+          console.error('Error parsing JumpCloud SSO claims:', error)
+        }
+      }
+      
+      // Check localStorage for any user tokens
+      const userToken = localStorage.getItem('userToken')
+      if (userToken) {
+        try {
+          const tokenParts = userToken.split('.')
+          if (tokenParts.length === 3) {
+            const payload = JSON.parse(atob(tokenParts[1]))
+            if (payload.email) {
+              const email = Array.isArray(payload.email) ? payload.email[0] : payload.email
+              console.log('Found email in JWT token:', email)
+              return email
+            }
+            if (payload.preferred_username && payload.preferred_username.includes('@')) {
+              const email = Array.isArray(payload.preferred_username) ? payload.preferred_username[0] : payload.preferred_username
+              console.log('Found email in JWT preferred_username:', email)
+              return email
+            }
+          }
+        } catch (error) {
+          console.error('Error decoding JWT token:', error)
+        }
+      }
+      
+      // If we're in development and the current user is cristian.rodriguez
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Development mode: using cristian.rodriguez@americor.com')
+        return 'cristian.rodriguez@americor.com'
+      }
+      
+      // No authentication found
+      throw new Error('User not authenticated via SSO')
     }
   }
 }
