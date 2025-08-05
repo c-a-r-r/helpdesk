@@ -19,7 +19,7 @@
       <div class="page-header">
         <div class="header-content">
           <div class="header-text">
-            <h1>User Management Tools</h1>
+            <h1>Onboarding Tools</h1>
             <p>Execute scripts for {{ userData?.first_name }} {{ userData?.last_name }}</p>
           </div>
           <button class="btn-secondary" @click="goBack">
