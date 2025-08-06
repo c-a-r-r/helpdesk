@@ -21,9 +21,9 @@ class OffboardingStatus(enum.Enum):
     FAILED = "Failed"
 
 class ScriptStatus(enum.Enum):
-    SUCCESS = "success"
-    FAILED = "failed"
-    RUNNING = "running"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    RUNNING = "RUNNING"
 
 class Onboarding(Base):
     __tablename__ = "onboarding"
@@ -73,6 +73,15 @@ class Onboarding(Base):
     ticket_number = Column(String(50), nullable=True)
     notes = Column(Text, nullable=True)
     extra_details = Column(Text, nullable=True)
+    
+    # Account Creation Status
+    jumpcloud_status = Column(Enum(ScriptStatus), nullable=True)  # JumpCloud account creation status
+    jumpcloud_created_at = Column(DateTime(timezone=True), nullable=True)  # When JumpCloud account was created
+    jumpcloud_error = Column(Text, nullable=True)  # Error message if JumpCloud creation failed
+    
+    google_status = Column(Enum(ScriptStatus), nullable=True)  # Google Workspace account creation status
+    google_created_at = Column(DateTime(timezone=True), nullable=True)  # When Google account was created
+    google_error = Column(Text, nullable=True)  # Error message if Google creation failed
     
     # Record Management
     created_by = Column(String(255), nullable=True)  # Email of user who created record, or 'freshdesk-sync' for automated

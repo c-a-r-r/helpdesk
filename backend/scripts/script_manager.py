@@ -72,7 +72,7 @@ class ScriptManager:
                 
                 # Update log with error
                 ScriptLogCRUD.update_completion(
-                    db, script_log.id, "failed", 
+                    db, script_log.id, ScriptStatus.FAILED.value, 
                     error_message=error_msg,
                     execution_time_seconds=int(time.time() - start_time)
                 )
@@ -118,11 +118,11 @@ class ScriptManager:
             execution_time = int(time.time() - start_time)
             
             success = process.returncode == 0
-            status = "success" if success else "failed"
+            status = ScriptStatus.SUCCESS if success else ScriptStatus.FAILED
             
             # Update log with completion
             ScriptLogCRUD.update_completion(
-                db, script_log.id, status,
+                db, script_log.id, status.value,
                 output=stdout if success else None,
                 error_message=stderr if not success else None,
                 execution_time_seconds=execution_time
@@ -146,7 +146,7 @@ class ScriptManager:
             
             # Update log with error
             ScriptLogCRUD.update_completion(
-                db, script_log.id, "failed",
+                db, script_log.id, ScriptStatus.FAILED.value,
                 error_message=error_msg,
                 execution_time_seconds=execution_time
             )

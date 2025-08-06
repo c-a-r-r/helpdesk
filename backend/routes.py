@@ -226,6 +226,18 @@ async def execute_script(
                 raise HTTPException(status_code=404, detail="User not found")
             
             # Convert user data to dict for script execution
+            # Generate company email if missing
+            company_email = user_data.company_email
+            if not company_email:
+                if user_data.username:
+                    company_email = f"{user_data.username}@americor.com"
+                elif user_data.first_name and user_data.last_name:
+                    # Generate username from name if missing
+                    username = f"{user_data.first_name.lower()}.{user_data.last_name.lower()}"
+                    company_email = f"{username}@americor.com"
+                else:
+                    company_email = None
+            
             script_input = {
                 "id": user_data.id,
                 "company": user_data.company,
@@ -233,7 +245,7 @@ async def execute_script(
                 "last_name": user_data.last_name,
                 "display_name": user_data.display_name,
                 "personal_email": user_data.personal_email,
-                "company_email": user_data.company_email,
+                "company_email": company_email,
                 "phone_number": user_data.phone_number,
                 "title": user_data.title,
                 "manager": user_data.manager,
@@ -245,7 +257,7 @@ async def execute_script(
                 "city": user_data.city,
                 "state": user_data.state,
                 "zip_code": user_data.zip_code,
-                "username": user_data.username,
+                "username": user_data.username or (f"{user_data.first_name.lower()}.{user_data.last_name.lower()}" if user_data.first_name and user_data.last_name else None),
                 "department_ou": user_data.department_ou,
                 "hostname": user_data.hostname,
                 "password": user_data.password,
@@ -303,6 +315,123 @@ def get_script_log(log_id: int, db: Session = Depends(get_db)):
     if not log:
         raise HTTPException(status_code=404, detail="Script log not found")
     return log
+
+# Bulk operation endpoints
+@router.post("/scripts/jumpcloud/create-user")
+async def bulk_create_jumpcloud_user(
+    request: ScriptExecutionRequest,
+    user_email: str = Query(..., description="Email of the user executing the script"),
+    db: Session = Depends(get_db)
+):
+    """Create JumpCloud account for a user"""
+    if not request.user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+    
+    script_request = ScriptExecutionRequest(
+        script_type="jumpcloud",
+        script_name="create_user",
+        user_id=request.user_id,
+        additional_params=request.additional_params
+    )
+    
+    # Execute script and get result
+    result = await execute_script(script_request, user_email, None, db)
+    
+    # Update onboarding record with JumpCloud status
+    try:
+        import json
+        from crud import OnboardingCRUD
+        from models import ScriptStatus
+        from schemas import OnboardingUpdate
+        from datetime import datetime
+        
+        user_data = OnboardingCRUD.get(db, request.user_id)
+        if user_data:
+            # Parse the nested result structure from execute_script
+            script_result = {}
+            if result.get("success") and result.get("output"):
+                try:
+                    output_data = json.loads(result["output"])
+                    script_result = output_data.get("result", {})
+                except json.JSONDecodeError:
+                    script_result = {}
+            
+            # Check the actual status returned by the script
+            script_status = script_result.get("status", "failed")
+            is_success = script_status in ["created", "already_exists"]
+            
+            # Create OnboardingUpdate object with the status fields
+            update_data = OnboardingUpdate(
+                jumpcloud_status=ScriptStatus.SUCCESS if is_success else ScriptStatus.FAILED,
+                jumpcloud_created_at=datetime.now() if is_success else None,
+                jumpcloud_error=script_result.get("error") if not is_success else None
+            )
+            
+            OnboardingCRUD.update(db, request.user_id, update_data, user_email)
+            logger.info(f"Updated JumpCloud status for user {request.user_id}: {script_status} -> {update_data.jumpcloud_status}")
+            
+    except Exception as e:
+        logger.error(f"Failed to update JumpCloud status for user {request.user_id}: {e}")
+    
+    return result
+
+@router.post("/scripts/google/create-user")
+async def bulk_create_google_user(
+    request: ScriptExecutionRequest,
+    user_email: str = Query(..., description="Email of the user executing the script"),
+    db: Session = Depends(get_db)
+):
+    """Create Google Workspace account for a user"""
+    if not request.user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+    
+    script_request = ScriptExecutionRequest(
+        script_type="google",
+        script_name="create_user",
+        user_id=request.user_id,
+        additional_params=request.additional_params
+    )
+    
+    # Execute script and get result
+    result = await execute_script(script_request, user_email, None, db)
+    
+    # Update onboarding record with Google Workspace status
+    try:
+        import json
+        from crud import OnboardingCRUD
+        from models import ScriptStatus
+        from schemas import OnboardingUpdate
+        from datetime import datetime
+        
+        user_data = OnboardingCRUD.get(db, request.user_id)
+        if user_data:
+            # Parse the nested result structure from execute_script
+            script_result = {}
+            if result.get("success") and result.get("output"):
+                try:
+                    output_data = json.loads(result["output"])
+                    script_result = output_data.get("result", {})
+                except json.JSONDecodeError:
+                    script_result = {}
+            
+            # Check the actual status returned by the script
+            script_status = script_result.get("status", "failed")
+            is_success = script_status in ["created", "already_exists"]
+            
+            # Create OnboardingUpdate object with the status fields
+            update_data = OnboardingUpdate(
+                google_status=ScriptStatus.SUCCESS if is_success else ScriptStatus.FAILED,
+                google_created_at=datetime.now() if is_success else None,
+                google_error=script_result.get("error") if not is_success else None
+            )
+            
+            OnboardingCRUD.update(db, request.user_id, update_data, user_email)
+            logger.info(f"Updated Google Workspace status for user {request.user_id}: {script_status} -> {update_data.google_status}")
+            
+    except Exception as e:
+        logger.error(f"Failed to update Google Workspace status for user {request.user_id}: {e}")
+    
+    return result
 
 # Dashboard endpoints
 @router.get("/dashboard/stats")

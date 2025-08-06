@@ -30,6 +30,11 @@ const router = createRouter({
           component: () => import('@/components/OnboardingView.vue')
         },
         {
+          path: '/onboarding/bulk',
+          name: 'onboarding-bulk',
+          component: () => import('@/components/OnboardUsersBulkView.vue')
+        },
+        {
           path: '/onboarding/edit/:userId',
           name: 'edit-user',
           component: () => import('@/components/EditUser.vue')

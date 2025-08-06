@@ -147,6 +147,12 @@ class OnboardingUpdate(BaseModel):
     notes: Optional[str] = None
     extra_details: Optional[str] = None
     created_by: Optional[str] = None
+    jumpcloud_status: Optional[ScriptStatus] = None
+    jumpcloud_created_at: Optional[datetime] = None
+    jumpcloud_error: Optional[str] = None
+    google_status: Optional[ScriptStatus] = None
+    google_created_at: Optional[datetime] = None
+    google_error: Optional[str] = None
 
 class OnboardingResponse(OnboardingBase):
     id: int
@@ -155,6 +161,13 @@ class OnboardingResponse(OnboardingBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    # Account creation tracking
+    jumpcloud_status: Optional[ScriptStatus] = None
+    jumpcloud_created_at: Optional[datetime] = None
+    jumpcloud_error: Optional[str] = None
+    google_status: Optional[ScriptStatus] = None
+    google_created_at: Optional[datetime] = None
+    google_error: Optional[str] = None
 
     class Config:
         from_attributes = True

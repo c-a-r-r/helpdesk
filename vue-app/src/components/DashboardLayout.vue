@@ -21,6 +21,12 @@
             </router-link>
           </li>
           <li>
+            <router-link to="/onboarding/bulk" class="nav-item" :class="{ active: $route.path === '/onboarding/bulk' }">
+              <i class="fas fa-users-gear icon"></i>
+              <span>Bulk Onboard Users</span>
+            </router-link>
+          </li>
+          <li>
             <router-link to="/print-onboarding" class="nav-item" :class="{ active: $route.path === '/print-onboarding' }">
               <i class="fas fa-print icon"></i>
               <span>Print Onboarding Info</span>
@@ -332,7 +338,7 @@ export default {
   text-decoration: none;
   font-weight: 400;
   transition: all 0.3s ease;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
 .nav-item:hover,

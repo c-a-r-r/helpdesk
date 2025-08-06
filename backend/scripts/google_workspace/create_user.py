@@ -98,19 +98,72 @@ class CreateGoogleWorkspaceUser(BaseUserScript):
 
     def get_org_unit_path(self) -> str:
         """Get organizational unit path based on department_ou field or default"""
-        department_ou = self.user_data.get('department_ou', '').strip()
-        department = self.user_data.get('department', '').lower()
+        department_ou = self.user_data.get('department_ou', '') or ''
+        department = self.user_data.get('department', '') or ''
         
-        # Use department_ou if provided (this is the actual OU path)
+        # Safely strip strings, handling None values
+        department_ou = department_ou.strip() if department_ou else ''
+        department = department.lower().strip() if department else ''
+        
+        # Valid Google Workspace OU paths (update this based on your actual OUs)
+        valid_ous = {
+            "/Legal": "/Legal",
+            "/External Contractors/Kipi": "/External Contractors/Kipi", 
+            "/Accounting": "/Accounting",
+            "/Human Resources": "/Human Resources",
+            "/Mission Loans": "/Mission Loans",
+            "/Compliance": "/Compliance",
+            # Map legacy/invalid OUs to valid ones
+            "IT-OU": "/",  # Map IT-OU to root since it's not a valid OU path
+            "/IT-OU": "/",  # Also handle if it has slash
+            "IT": "/",     # Map IT department to root
+            "/IT": "/"
+        }
+        
+        # Use department_ou if provided and valid
         if department_ou:
-            # Ensure it starts with / if not already
-            if not department_ou.startswith('/'):
-                department_ou = f"/{department_ou}"
-            self.log_info(f"Using specified organizational unit: {department_ou}")
-            return department_ou
+            # Check if it's a valid OU directly
+            if department_ou in valid_ous:
+                mapped_ou = valid_ous[department_ou]
+                self.log_info(f"Using mapped organizational unit: {mapped_ou} (from {department_ou})")
+                return mapped_ou
+            
+            # If it starts with /, check if it's valid
+            if department_ou.startswith('/'):
+                if department_ou in valid_ous:
+                    self.log_info(f"Using specified organizational unit: {department_ou}")
+                    return department_ou
+                else:
+                    self.log_warning(f"Invalid OU path '{department_ou}', falling back to root (/)")
+                    return "/"
+            else:
+                # Try adding slash and check again
+                with_slash = f"/{department_ou}"
+                if with_slash in valid_ous:
+                    mapped_ou = valid_ous[with_slash]
+                    self.log_info(f"Using mapped organizational unit: {mapped_ou} (from {department_ou})")
+                    return mapped_ou
+                else:
+                    self.log_warning(f"Invalid OU '{department_ou}' not found in valid OUs, falling back to root (/)")
+                    return "/"
         
-        # Fallback to root OU if no department_ou specified
-        self.log_info(f"No department_ou specified, using root organizational unit (/) for department: {department}")
+        # Fallback based on department name
+        department_mappings = {
+            'legal': '/Legal',
+            'accounting': '/Accounting', 
+            'hr': '/Human Resources',
+            'human resources': '/Human Resources',
+            'compliance': '/Compliance',
+            'mission loans': '/Mission Loans'
+        }
+        
+        if department and department in department_mappings:
+            mapped_ou = department_mappings[department]
+            self.log_info(f"Using department-based OU mapping: {mapped_ou} for department '{department}'")
+            return mapped_ou
+        
+        # Final fallback to root OU
+        self.log_info(f"No valid OU found for department '{department}', using root organizational unit (/)")
         return "/"
     
     def generate_random_password(self, length=14):
@@ -120,11 +173,13 @@ class CreateGoogleWorkspaceUser(BaseUserScript):
         return password
     
     def sanitize_user_data(self, user_data):
-        """Sanitize user data by trimming strings"""
+        """Sanitize user data by trimming strings and handling None values"""
         sanitized_data = {}
         for key, value in user_data.items():
             if isinstance(value, str):
                 sanitized_data[key] = value.strip()
+            elif value is None:
+                sanitized_data[key] = ""  # Convert None to empty string
             else:
                 sanitized_data[key] = value
         return sanitized_data
