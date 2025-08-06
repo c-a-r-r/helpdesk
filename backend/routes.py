@@ -309,10 +309,10 @@ def get_script_log(log_id: int, db: Session = Depends(get_db)):
 def get_dashboard_stats(db: Session = Depends(get_db)):
     """Get dashboard statistics"""
     from sqlalchemy import func, case
-    from models import Onboarding, OnboardingStatus
+    from models import Onboarding, OnboardingStatus, Offboarding, OffboardingStatus
     
-    # Get total counts by status
-    stats = db.query(
+    # Get onboarding counts by status
+    onboarding_stats = db.query(
         func.count(Onboarding.id).label('total'),
         func.sum(case((Onboarding.status == OnboardingStatus.COMPLETED, 1), else_=0)).label('completed'),
         func.sum(case((Onboarding.status == OnboardingStatus.PENDING, 1), else_=0)).label('pending'),
@@ -320,12 +320,15 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         func.sum(case((Onboarding.status == OnboardingStatus.FAILED, 1), else_=0)).label('failed')
     ).first()
     
+    # Get offboarding counts
+    offboarding_count = db.query(func.count(Offboarding.id)).scalar() or 0
+    
     return {
-        "totalUsers": stats.total or 0,
-        "completedUsers": stats.completed or 0,
-        "pendingUsers": stats.pending or 0,
-        "inProgressUsers": stats.in_progress or 0,
-        "offboardedUsers": stats.failed or 0  # Map failed to offboarded for frontend
+        "totalUsers": onboarding_stats.total or 0,
+        "completedUsers": onboarding_stats.completed or 0,
+        "pendingUsers": onboarding_stats.pending or 0,
+        "inProgressUsers": onboarding_stats.in_progress or 0,
+        "offboardedUsers": offboarding_count  # Real count of offboarded users
     }
 
 @router.get("/dashboard/recent-activity")

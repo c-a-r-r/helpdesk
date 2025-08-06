@@ -33,12 +33,12 @@
               <span>Offboard Users</span>
             </router-link>
           </li>
-          <li>
+          <!-- <li>
             <router-link to="/offboarded-users" class="nav-item" :class="{ active: $route.path === '/offboarded-users' }">
               <i class="fas fa-users-slash icon"></i>
               <span>Offboarded Users Info</span>
             </router-link>
-          </li>
+          </li> -->
                     <li>
             <router-link to="/settings" class="nav-item" :class="{ active: $route.path === '/settings' }">
               <i class="fas fa-cog icon"></i>
@@ -332,6 +332,7 @@ export default {
   text-decoration: none;
   font-weight: 400;
   transition: all 0.3s ease;
+  font-size: 0.9rem;
 }
 
 .nav-item:hover,

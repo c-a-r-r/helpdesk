@@ -254,6 +254,18 @@
                         placeholder="Additional notes or special requirements..."
                         rows="3"></textarea>
             </div>
+            
+            <!-- Created By -->
+            <div class="form-group">
+              <label for="createdBy">Created By</label>
+              <input type="text" id="createdBy" :value="user.createdBy || 'N/A'" readonly class="readonly-field">
+            </div>
+            
+            <!-- Created Date -->
+            <div class="form-group">
+              <label for="createdAt">Created Date</label>
+              <input type="text" id="createdAt" :value="formatDateTime(user.createdAt)" readonly class="readonly-field">
+            </div>
           </div>
           
           <div class="form-actions">
@@ -376,7 +388,9 @@ export default {
           zoom: userData.zoom || false,
           five9: userData.five9 || false,
           notes: userData.notes || '',
-          extraDetails: userData.extra_details || ''
+          extraDetails: userData.extra_details || '',
+          createdBy: userData.created_by || null,
+          createdAt: userData.created_at || null
         }
         
         console.log('User loaded successfully:', this.user)
@@ -511,6 +525,15 @@ export default {
     
     goBack() {
       this.$router.push({ name: 'onboarding' })
+    },
+
+    formatDateTime(dateString) {
+      if (!dateString) return 'N/A'
+      try {
+        return new Date(dateString).toLocaleString()
+      } catch {
+        return 'Invalid Date'
+      }
     },
 
     getCurrentUserEmail() {

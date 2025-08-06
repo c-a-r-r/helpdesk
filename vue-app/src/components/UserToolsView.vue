@@ -136,6 +136,18 @@
               <label>Extra Details</label>
               <textarea :value="userData?.extra_details || 'N/A'" readonly class="readonly-field" rows="3"></textarea>
             </div>
+            
+            <!-- Created By -->
+            <div class="form-group">
+              <label>Created By</label>
+              <input type="text" :value="userData?.created_by || 'N/A'" readonly class="readonly-field">
+            </div>
+            
+            <!-- Created Date -->
+            <div class="form-group">
+              <label>Created Date</label>
+              <input type="text" :value="formatDateTime(userData?.created_at)" readonly class="readonly-field">
+            </div>
           </div>
         </div>
       </div>
