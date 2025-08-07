@@ -277,9 +277,17 @@
 
 <script>
 import axios from 'axios'
+import { useAuth } from '@/composables/useAuth'
 
 export default {
   name: 'OnboardUsersBulkView',
+  setup() {
+    const { getCurrentUser, hasPermission } = useAuth()
+    return {
+      getCurrentUser,
+      hasPermission
+    }
+  },
   data() {
     return {
       onboardingData: [],
@@ -370,18 +378,15 @@ export default {
     },
     
     canEdit() {
-      const user = this.currentUser
-      return user ? this.hasEditPermission() : false
+      return this.hasPermission('EDIT_USER')
     },
     
     canDelete() {
-      const user = this.currentUser
-      return user ? this.hasDeletePermission() : false
+      return this.hasPermission('DELETE_USER')
     },
     
     canCreate() {
-      const user = this.currentUser
-      return user ? this.hasCreatePermission() : false
+      return this.hasPermission('CREATE_USER')
     }
   },
   mounted() {
@@ -567,13 +572,25 @@ export default {
     async deleteUser(user) {
       if (confirm(`Are you sure you want to delete ${user.first_name} ${user.last_name}?`)) {
         try {
-          const currentUserEmail = this.getCurrentUserEmail()
-          await axios.delete(`/api/v1/onboarding/${user.id}?user_email=${encodeURIComponent(currentUserEmail)}`)
+          const currentUser = this.getCurrentUser()
+          const ssoUser = currentUser?.ssoUser || {}
+          const userEmail = ssoUser.email || currentUser?.email || 'unknown@example.com'
+          
+          await axios.delete(`/api/v1/onboarding/${user.id}?user_email=${encodeURIComponent(userEmail)}`, {
+            headers: {
+              'X-SSO-Claims': JSON.stringify(ssoUser)
+            }
+          })
+          
           alert('User deleted successfully!')
           await this.fetchOnboardingData()
         } catch (error) {
           console.error('Error deleting user:', error)
-          alert('Error deleting user: ' + (error.response?.data?.detail || error.message))
+          if (error.response?.status === 403) {
+            alert('Permission denied: You do not have permission to delete users')
+          } else {
+            alert('Error deleting user: ' + (error.response?.data?.detail || error.message))
+          }
         }
       }
     },
@@ -719,27 +736,6 @@ export default {
       }
       
       return 'USER'
-    },
-
-    hasCreatePermission() {
-      const user = this.currentUser
-      if (!user) return false
-      const role = user.role
-      return role === 'ADMIN' || role === 'IT'
-    },
-
-    hasEditPermission() {
-      const user = this.currentUser
-      if (!user) return false
-      const role = user.role
-      return role === 'ADMIN' || role === 'IT'
-    },
-
-    hasDeletePermission() {
-      const user = this.currentUser
-      if (!user) return false
-      const role = user.role
-      return role === 'ADMIN'
     },
 
     // Account status helper methods

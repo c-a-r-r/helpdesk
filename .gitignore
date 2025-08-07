@@ -31,7 +31,22 @@ yarn-error.log*
 dist/
 build/
 
-# IDE files
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.prod
+
+# Production secrets
+terraform.tfvars
+terraform.tfstate
+terraform.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+*.pem
+*.key
+
+# IDE and Editor files
 .vscode/
 .idea/
 *.swp

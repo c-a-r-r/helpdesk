@@ -403,16 +403,29 @@
 
 <script>
 import { useDepartmentMappings } from '@/composables/useDepartmentMappings'
+import { useAuth } from '@/composables/useAuth'
 import axios from 'axios'
 
 export default {
   name: 'OnboardingView',
   setup() {
     const { sortedDepartments, getDepartmentOU } = useDepartmentMappings()
+    const {
+      canCreateUser,
+      canEditUser,
+      canDeleteUser,
+      getCurrentUserEmail,
+      getSSOClaims
+    } = useAuth()
     
     return {
       sortedDepartments,
-      getDepartmentOU
+      getDepartmentOU,
+      canCreateUser,
+      canEditUser,
+      canDeleteUser,
+      getCurrentUserEmail,
+      getSSOClaims
     }
   },
   data() {
@@ -499,23 +512,19 @@ export default {
     },
     
     isAdmin() {
-      const user = this.currentUser
-      return user ? this.hasDeletePermission() : false
+      return this.canDeleteUser
     },
     
     canEdit() {
-      const user = this.currentUser
-      return user ? this.hasEditPermission() : false
+      return this.canEditUser
     },
     
     canDelete() {
-      const user = this.currentUser
-      return user ? this.hasDeletePermission() : false
+      return this.canDeleteUser
     },
     
     canCreate() {
-      const user = this.currentUser
-      return user ? this.hasCreatePermission() : false
+      return this.canCreateUser
     }
   },
   mounted() {
@@ -593,14 +602,28 @@ export default {
     async deleteUser(user) {
       if (confirm(`Are you sure you want to delete ${user.first_name} ${user.last_name}?`)) {
         try {
-          // Get current user email from SSO authentication
+          // Get current user email and SSO claims
           const currentUserEmail = this.getCurrentUserEmail()
-          await axios.delete(`/api/v1/onboarding/${user.id}?user_email=${encodeURIComponent(currentUserEmail)}`)
+          const ssoClaimsString = this.getSSOClaims()
+          
+          const params = new URLSearchParams({
+            user_email: currentUserEmail
+          })
+          
+          if (ssoClaimsString) {
+            params.append('user_claims', ssoClaimsString)
+          }
+          
+          await axios.delete(`/api/v1/onboarding/${user.id}?${params.toString()}`)
           alert('User deleted successfully!')
           await this.fetchOnboardingData()
         } catch (error) {
           console.error('Error deleting user:', error)
-          alert('Error deleting user: ' + (error.response?.data?.detail || error.message))
+          if (error.response?.status === 403) {
+            alert('You do not have permission to delete records. Only administrators can delete onboarding records.')
+          } else {
+            alert('Error deleting user: ' + (error.response?.data?.detail || error.message))
+          }
         }
       }
     },
@@ -1009,30 +1032,6 @@ export default {
       }
       
       return 'USER'
-    },
-
-    hasCreatePermission() {
-      const user = this.currentUser
-      if (!user) return false
-      
-      const role = user.role
-      return role === 'ADMIN' || role === 'IT'
-    },
-
-    hasEditPermission() {
-      const user = this.currentUser
-      if (!user) return false
-      
-      const role = user.role
-      return role === 'ADMIN' || role === 'IT'
-    },
-
-    hasDeletePermission() {
-      const user = this.currentUser
-      if (!user) return false
-      
-      const role = user.role
-      return role === 'ADMIN'  // Only ADMIN can delete
     }
   }
 }

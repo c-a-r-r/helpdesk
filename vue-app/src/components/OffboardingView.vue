@@ -160,9 +160,27 @@
 
 <script>
 import axios from 'axios'
+import { useAuth } from '../composables/useAuth'
 
 export default {
   name: 'OffboardingView',
+  setup() {
+    const {
+      canCreateUser,
+      canEditUser,
+      canDeleteUser,
+      getCurrentUserEmail,
+      getSSOClaims
+    } = useAuth()
+
+    return {
+      canCreateUser,
+      canEditUser,
+      canDeleteUser,
+      getCurrentUserEmail,
+      getSSOClaims
+    }
+  },
   data() {
     return {
       offboardingData: [],
@@ -172,14 +190,20 @@ export default {
       statusFilter: '',
       recordsPerPage: '25',
       currentPage: 1,
-      statusSortOrder: null,
-      // Mock permissions - replace with real auth later
-      canCreate: true,
-      canEdit: true,
-      canDelete: true
+      statusSortOrder: null
     }
   },
   computed: {
+    // Use the composable values instead of hardcoded ones
+    canCreate() {
+      return this.canCreateUser
+    },
+    canEdit() {
+      return this.canEditUser
+    },
+    canDelete() {
+      return this.canDeleteUser
+    },
     filteredOffboardingData() {
       let filtered = this.offboardingData
 
@@ -290,14 +314,28 @@ export default {
     async deleteUser(user) {
       if (confirm(`Are you sure you want to delete the offboarding record for ${user.first_name} ${user.last_name}?`)) {
         try {
-          // Get current user email from SSO authentication
+          // Get current user email and SSO claims
           const currentUserEmail = this.getCurrentUserEmail()
-          await axios.delete(`/api/v1/offboarding/${user.id}?user_email=${encodeURIComponent(currentUserEmail)}`)
+          const ssoClaimsString = this.getSSOClaims()
+          
+          const params = new URLSearchParams({
+            user_email: currentUserEmail
+          })
+          
+          if (ssoClaimsString) {
+            params.append('user_claims', ssoClaimsString)
+          }
+          
+          await axios.delete(`/api/v1/offboarding/${user.id}?${params.toString()}`)
           alert('Offboarding record deleted successfully!')
           await this.fetchOffboardingData()
         } catch (error) {
           console.error('Error deleting offboarding record:', error)
-          alert('Error deleting offboarding record: ' + (error.response?.data?.detail || error.message))
+          if (error.response?.status === 403) {
+            alert('You do not have permission to delete records. Only administrators can delete offboarding records.')
+          } else {
+            alert('Error deleting offboarding record: ' + (error.response?.data?.detail || error.message))
+          }
         }
       }
     },
@@ -331,75 +369,8 @@ export default {
       }
     },
 
-    // Authentication and Permission Methods
-    getCurrentUserEmail() {
-      // Try to get user data from JumpCloud SSO claims in sessionStorage
-      const userClaims = sessionStorage.getItem('userClaims')
-      if (userClaims) {
-        try {
-          const claims = JSON.parse(userClaims)
-          console.log('JumpCloud SSO claims received:', claims)
-          
-          // Try to get email from JumpCloud claims
-          if (claims.email) {
-            const email = Array.isArray(claims.email) ? claims.email[0] : claims.email
-            console.log('Found email in claims:', email)
-            return email
-          }
-          
-          // Try preferred_username
-          if (claims.preferred_username && claims.preferred_username.includes('@')) {
-            const email = Array.isArray(claims.preferred_username) ? claims.preferred_username[0] : claims.preferred_username
-            console.log('Found email in preferred_username:', email)
-            return email
-          }
-          
-          // If no direct email, construct one from name fields
-          if (claims.given_name && claims.family_name) {
-            const firstName = Array.isArray(claims.given_name) ? claims.given_name[0] : claims.given_name
-            const lastName = Array.isArray(claims.family_name) ? claims.family_name[0] : claims.family_name
-            const constructedEmail = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@americor.com`
-            console.log('Constructed email from name:', constructedEmail)
-            return constructedEmail
-          }
-          
-        } catch (error) {
-          console.error('Error parsing JumpCloud SSO claims:', error)
-        }
-      }
-      
-      // Check localStorage for any user tokens
-      const userToken = localStorage.getItem('userToken')
-      if (userToken) {
-        try {
-          const tokenParts = userToken.split('.')
-          if (tokenParts.length === 3) {
-            const payload = JSON.parse(atob(tokenParts[1]))
-            if (payload.email) {
-              const email = Array.isArray(payload.email) ? payload.email[0] : payload.email
-              console.log('Found email in JWT token:', email)
-              return email
-            }
-            if (payload.preferred_username && payload.preferred_username.includes('@')) {
-              const email = Array.isArray(payload.preferred_username) ? payload.preferred_username[0] : payload.preferred_username
-              console.log('Found email in JWT preferred_username:', email)
-              return email
-            }
-          }
-        } catch (error) {
-          console.error('Error decoding JWT token:', error)
-        }
-      }
-      
-      // If we're in development and the current user is cristian.rodriguez
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Development mode: using cristian.rodriguez@americor.com')
-        return 'cristian.rodriguez@americor.com'
-      }
-      
-      // No authentication found
-      throw new Error('User not authenticated via SSO')
-    }
+    // Authentication and Permission Methods are now handled by the composable
+    // Remove the old getCurrentUserEmail method since it's in the composable
   }
 }
 </script>

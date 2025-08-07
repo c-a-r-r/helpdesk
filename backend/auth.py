@@ -16,6 +16,10 @@ class UserPermission(Enum):
     DELETE_USER = "delete_user"
     VIEW_USER = "view_user"
     
+    # Bulk Operations
+    BULK_ONBOARD = "bulk_onboard"
+    BULK_OFFBOARD = "bulk_offboard"
+    
     # Script Execution
     EXECUTE_SCRIPTS = "execute_scripts"
     VIEW_SCRIPT_LOGS = "view_script_logs"
@@ -31,6 +35,8 @@ ROLE_PERMISSIONS = {
         UserPermission.EDIT_USER,
         UserPermission.DELETE_USER,
         UserPermission.VIEW_USER,
+        UserPermission.BULK_ONBOARD,
+        UserPermission.BULK_OFFBOARD,
         UserPermission.EXECUTE_SCRIPTS,
         UserPermission.VIEW_SCRIPT_LOGS,
         UserPermission.MANAGE_SETTINGS,
@@ -40,8 +46,11 @@ ROLE_PERMISSIONS = {
         UserPermission.CREATE_USER,
         UserPermission.EDIT_USER,
         UserPermission.VIEW_USER,
+        UserPermission.BULK_ONBOARD,
+        UserPermission.BULK_OFFBOARD,
         UserPermission.EXECUTE_SCRIPTS,
         UserPermission.VIEW_SCRIPT_LOGS,
+        UserPermission.MANAGE_SETTINGS,  # Added settings access for IT
     ],
     UserRole.USER: [
         UserPermission.VIEW_USER,

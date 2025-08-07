@@ -22,6 +22,7 @@ class ScriptManager:
         self.jumpcloud_dir = self.scripts_dir / "jumpcloud"
         self.google_dir = self.scripts_dir / "google_workspace"
         self.freshservice_dir = self.scripts_dir / "freshservice"
+        self.automox_dir = self.scripts_dir / "automox"
         self.offboarding_dir = self.scripts_dir / "offboarding"
     
     async def execute_script(self, 
@@ -169,6 +170,8 @@ class ScriptManager:
             return self.google_dir / f"{script_name}.py"
         elif script_type == "freshservice":
             return self.freshservice_dir / f"{script_name}.py"
+        elif script_type == "automox":
+            return self.automox_dir / f"{script_name}.py"
         elif script_type == "offboarding":
             return self.offboarding_dir / f"{script_name}.py"
         else:
@@ -180,6 +183,7 @@ class ScriptManager:
             "jumpcloud": self._get_scripts_in_dir(self.jumpcloud_dir),
             "google": self._get_scripts_in_dir(self.google_dir),
             "freshservice": self._get_scripts_in_dir(self.freshservice_dir),
+            "automox": self._get_scripts_in_dir(self.automox_dir),
             "offboarding": self._get_scripts_in_dir(self.offboarding_dir)
         }
     

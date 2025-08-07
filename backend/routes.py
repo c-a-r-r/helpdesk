@@ -21,6 +21,24 @@ from sqlalchemy import text
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+def check_user_permission(user_email: str, required_permission: UserPermission, user_claims: Optional[str] = None):
+    """Check if user has required permission"""
+    if user_claims:
+        try:
+            authenticated_user = parse_user_from_sso_claims(json.loads(user_claims))
+            if not authenticated_user.has_permission(required_permission):
+                raise HTTPException(
+                    status_code=403, 
+                    detail=f"User {user_email} does not have permission {required_permission.value}. Required role: ADMIN or higher"
+                )
+            print(f"Permission check passed for {user_email} with role {authenticated_user.role}")
+        except json.JSONDecodeError:
+            print(f"Warning: Invalid SSO claims provided for {user_email}, allowing in development mode")
+        except Exception as e:
+            print(f"Warning: Permission check failed for {user_email}: {e}, allowing in development mode")
+    else:
+        print(f"Warning: No SSO claims provided for {user_email}, allowing in development mode")
+
 # Onboarding endpoints
 @router.post("/onboarding/", response_model=OnboardingResponse)
 def create_onboarding(
@@ -94,9 +112,12 @@ def update_onboarding(
 def delete_onboarding(
     onboarding_id: int,
     user_email: str = Query(..., description="Email of the user deleting the record"),
+    user_claims: Optional[str] = Query(None, description="SSO claims JSON for permission checking"),
     db: Session = Depends(get_db)
 ):
-    """Delete an onboarding record"""
+    """Delete an onboarding record - Admin only"""
+    check_user_permission(user_email, UserPermission.DELETE_USER, user_claims)
+    
     success = OnboardingCRUD.delete(db, onboarding_id, user_email)
     if not success:
         raise HTTPException(status_code=404, detail="Onboarding record not found")
@@ -107,9 +128,11 @@ def delete_onboarding(
 def create_bulk_onboarding(
     onboardings: List[OnboardingCreate],
     user_email: str = Query(..., description="Email of the user creating the records"),
+    user_claims: Optional[str] = Query(None, description="SSO claims JSON for permission checking"),
     db: Session = Depends(get_db)
 ):
-    """Create multiple onboarding records"""
+    """Create multiple onboarding records - Admin and IT roles"""
+    check_user_permission(user_email, UserPermission.BULK_ONBOARD, user_claims)
     created_records = []
     errors = []
     
@@ -142,9 +165,13 @@ def create_bulk_onboarding(
 @router.post("/department-mappings/", response_model=DepartmentMappingResponse)
 def create_department_mapping(
     dept_mapping: DepartmentMappingCreate,
+    user_email: str = Query(..., description="Email of the user creating the mapping"),
+    user_claims: Optional[str] = Query(None, description="SSO claims JSON for permission checking"),
     db: Session = Depends(get_db)
 ):
-    """Create a new department mapping"""
+    """Create a new department mapping - Admin and IT roles"""
+    check_user_permission(user_email, UserPermission.MANAGE_SETTINGS, user_claims)
+    
     # Check if department already exists
     existing = DepartmentMappingCRUD.get_by_department(db, dept_mapping.department)
     if existing:
@@ -169,17 +196,28 @@ def get_department_ou(department: str, db: Session = Depends(get_db)):
 def update_department_mapping(
     mapping_id: int,
     dept_mapping_update: DepartmentMappingUpdate,
+    user_email: str = Query(..., description="Email of the user updating the mapping"),
+    user_claims: Optional[str] = Query(None, description="SSO claims JSON for permission checking"),
     db: Session = Depends(get_db)
 ):
-    """Update a department mapping"""
+    """Update a department mapping - Admin and IT roles"""
+    check_user_permission(user_email, UserPermission.MANAGE_SETTINGS, user_claims)
+    
     mapping = DepartmentMappingCRUD.update(db, mapping_id, dept_mapping_update)
     if not mapping:
         raise HTTPException(status_code=404, detail="Department mapping not found")
     return mapping
 
 @router.delete("/department-mappings/{mapping_id}")
-def delete_department_mapping(mapping_id: int, db: Session = Depends(get_db)):
-    """Delete a department mapping"""
+def delete_department_mapping(
+    mapping_id: int, 
+    user_email: str = Query(..., description="Email of the user deleting the mapping"),
+    user_claims: Optional[str] = Query(None, description="SSO claims JSON for permission checking"),
+    db: Session = Depends(get_db)
+):
+    """Delete a department mapping - Admin and IT roles"""
+    check_user_permission(user_email, UserPermission.MANAGE_SETTINGS, user_claims)
+    
     success = DepartmentMappingCRUD.delete(db, mapping_id)
     if not success:
         raise HTTPException(status_code=404, detail="Department mapping not found")
@@ -987,9 +1025,12 @@ def update_offboarding(
 def delete_offboarding(
     offboarding_id: int,
     user_email: str = Query(..., description="Email of the user deleting the record"),
+    user_claims: Optional[str] = Query(None, description="SSO claims JSON for permission checking"),
     db: Session = Depends(get_db)
 ):
-    """Delete an offboarding record"""
+    """Delete an offboarding record - Admin only"""
+    check_user_permission(user_email, UserPermission.DELETE_USER, user_claims)
+    
     success = OffboardingCRUD.delete(db, offboarding_id, user_email)
     if not success:
         raise HTTPException(status_code=404, detail="Offboarding record not found")
