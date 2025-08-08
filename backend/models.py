@@ -180,3 +180,21 @@ class OffboardingScriptLog(Base):
     # Timestamps
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
+
+class SyncLog(Base):
+    __tablename__ = "sync_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sync_type = Column(String(50), nullable=False)  # e.g., 'freshservice'
+    sync_source = Column(String(100), nullable=True)  # e.g., 'Freshservice API'
+    status = Column(String(20), nullable=False)  # 'running', 'success', 'failed'
+    triggered_by = Column(String(50), nullable=True)  # 'manual_trigger', 'automated_scheduler'
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    execution_time_seconds = Column(Integer, nullable=True)
+    tickets_processed = Column(Integer, nullable=True)
+    users_created = Column(Integer, nullable=True)
+    users_skipped = Column(Integer, nullable=True)
+    output_message = Column(Text, nullable=True)
+    error_message = Column(Text, nullable=True)
+    additional_data = Column(Text, nullable=True)  # JSON string for extra context

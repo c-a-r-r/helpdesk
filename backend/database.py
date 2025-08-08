@@ -6,38 +6,40 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Database configuration
-DB_TYPE = os.getenv("DB_TYPE", "sqlite")  # Default to SQLite for development
+# Prefer an explicit DATABASE_URL if provided
+DATABASE_URL = os.getenv("DATABASE_URL")
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
-if DB_TYPE.lower() == "sqlite":
-    # SQLite configuration (for development)
-    DB_PATH = os.getenv("DB_PATH", "./helpdesk_crm.db")
-    DATABASE_URL = f"sqlite:///{DB_PATH}"
-    
-    # Create SQLAlchemy engine for SQLite
-    engine = create_engine(
-        DATABASE_URL,
-        echo=True,  # Set to False in production
-        connect_args={"check_same_thread": False}  # Needed for SQLite
-    )
-else:
-    # MariaDB/MySQL configuration (for production)
-    DB_HOST = os.getenv("DB_HOST", "localhost")
+if not DATABASE_URL:
+    # Require MariaDB/RDS configuration
+    DB_TYPE = os.getenv("DB_TYPE", "mariadb").lower()
+    if DB_TYPE != "mariadb":
+        raise RuntimeError("SQLite support removed. Set DB_TYPE=mariadb and configure RDS connection or set DATABASE_URL.")
+
+    DB_HOST = os.getenv("DB_HOST")
     DB_PORT = os.getenv("DB_PORT", "3306")
-    DB_USER = os.getenv("DB_USER", "root")
+    DB_USER = os.getenv("DB_USER")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-    DB_NAME = os.getenv("DB_NAME", "helpdesk_crm")
+    DB_NAME = os.getenv("DB_NAME")
 
-    # MariaDB connection string
+    missing = [k for k, v in {
+        "DB_HOST": DB_HOST,
+        "DB_USER": DB_USER,
+        "DB_NAME": DB_NAME,
+    }.items() if not v]
+    if missing:
+        raise RuntimeError(f"Missing required DB settings: {', '.join(missing)}. Alternatively set DATABASE_URL.")
+
     DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-    # Create SQLAlchemy engine
-    engine = create_engine(
-        DATABASE_URL,
-        echo=True,  # Set to False in production
-        pool_pre_ping=True,
-        pool_recycle=300
-    )
+# Create SQLAlchemy engine (MariaDB/RDS)
+engine = create_engine(
+    DATABASE_URL,
+    echo=DEBUG,
+    pool_pre_ping=True,
+    pool_recycle=300,
+    future=True,
+)
 
 # Create sessionmaker
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

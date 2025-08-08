@@ -181,9 +181,22 @@ class ReliableBackgroundScheduler:
             })
             db.commit()
             
-            # Get the inserted log ID
-            result_proxy = db.execute(text("SELECT LAST_INSERT_ID()"))
-            log_id = result_proxy.fetchone()[0]
+            # Get the inserted log ID (support sqlite and mysql)
+            try:
+                dialect = db.bind.dialect.name if getattr(db, 'bind', None) else 'unknown'
+                if dialect == 'sqlite':
+                    result_proxy = db.execute(text("SELECT last_insert_rowid()"))
+                    log_id = result_proxy.scalar()
+                elif dialect in ('mysql', 'mariadb'):
+                    result_proxy = db.execute(text("SELECT LAST_INSERT_ID()"))
+                    log_id = result_proxy.scalar()
+                else:
+                    result_proxy = db.execute(text("SELECT MAX(id) FROM sync_logs"))
+                    log_id = result_proxy.scalar()
+            except Exception as id_err:
+                logger.warning(f"Could not get last insert id: {id_err}. Falling back to MAX(id)")
+                result_proxy = db.execute(text("SELECT MAX(id) FROM sync_logs"))
+                log_id = result_proxy.scalar()
             
             logger.info(f"Created sync log entry with ID: {log_id}")
             
@@ -286,8 +299,24 @@ class ReliableBackgroundScheduler:
             logger.error(f"Full traceback: {traceback.format_exc()}")
             
             # Update sync_logs with error if we have a log entry
-            if log_id and db:
+            if db:
                 try:
+                    # Try best-effort to get last log id
+                    try:
+                        dialect = db.bind.dialect.name if getattr(db, 'bind', None) else 'unknown'
+                        if dialect == 'sqlite':
+                            result_proxy = db.execute(text("SELECT last_insert_rowid()"))
+                            log_id = result_proxy.scalar()
+                        elif dialect in ('mysql', 'mariadb'):
+                            result_proxy = db.execute(text("SELECT LAST_INSERT_ID()"))
+                            log_id = result_proxy.scalar()
+                        else:
+                            result_proxy = db.execute(text("SELECT MAX(id) FROM sync_logs"))
+                            log_id = result_proxy.scalar()
+                    except Exception:
+                        result_proxy = db.execute(text("SELECT MAX(id) FROM sync_logs"))
+                        log_id = result_proxy.scalar()
+                    
                     completed_at = datetime.now()
                     db.execute(text("""
                         UPDATE sync_logs 

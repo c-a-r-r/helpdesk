@@ -684,9 +684,28 @@ async def trigger_manual_freshservice_sync(db: Session = Depends(get_db)):
         })
         db.commit()
         
-        # Get the inserted log ID
-        result_proxy = db.execute(text("SELECT LAST_INSERT_ID()"))
-        log_id = result_proxy.fetchone()[0]
+        # Get the inserted log ID in a DB-agnostic way
+        try:
+            dialect = db.bind.dialect.name if getattr(db, 'bind', None) else 'unknown'
+            if dialect == 'sqlite':
+                result_proxy = db.execute(text("SELECT last_insert_rowid()"))
+                log_id = result_proxy.scalar()
+            elif dialect in ('mysql', 'mariadb'):
+                result_proxy = db.execute(text("SELECT LAST_INSERT_ID()"))
+                log_id = result_proxy.scalar()
+            else:
+                # Fallback: find by timestamp and trigger
+                result_proxy = db.execute(text("""
+                    SELECT id FROM sync_logs 
+                    WHERE triggered_by = :triggered_by AND started_at = :started_at
+                    ORDER BY id DESC LIMIT 1
+                """), { 'triggered_by': 'manual_trigger', 'started_at': started_at })
+                row = result_proxy.fetchone()
+                log_id = row[0] if row else None
+        except Exception as id_err:
+            logger.warning(f"Could not get last insert id: {id_err}. Falling back to MAX(id)")
+            result_proxy = db.execute(text("SELECT MAX(id) FROM sync_logs"))
+            log_id = result_proxy.scalar()
         
         # Execute the actual Freshservice sync script
         from scripts.freshservice.sync_onboarding import FreshserviceOnboardingSync
