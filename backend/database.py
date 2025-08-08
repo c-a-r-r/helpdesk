@@ -30,7 +30,7 @@ if not DATABASE_URL:
     if missing:
         raise RuntimeError(f"Missing required DB settings: {', '.join(missing)}. Alternatively set DATABASE_URL.")
 
-    DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
 
 # Create SQLAlchemy engine (MariaDB/RDS)
 engine = create_engine(

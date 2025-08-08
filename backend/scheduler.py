@@ -102,7 +102,7 @@ class ReliableBackgroundScheduler:
     
     def _log_heartbeat(self):
         """Log heartbeat to confirm scheduler is running"""
-        logger.info("📡 Scheduler heartbeat - System is running")
+        logger.info("Scheduler heartbeat - System is running")
         logger.info(f"Next sync attempt scheduled for: {self._get_next_sync_time()}")
         logger.info(f"Last sync attempt: {self.last_sync_attempt}")
         logger.info(f"Last successful sync: {self.last_sync_success}")
@@ -121,7 +121,7 @@ class ReliableBackgroundScheduler:
         self.last_sync_attempt = datetime.now()
         
         try:
-            logger.info("🔄 Starting automated Freshservice onboarding sync...")
+            logger.info("Starting automated Freshservice onboarding sync...")
             logger.info(f"Sync attempt at: {self.last_sync_attempt}")
             
             result = self._run_freshservice_sync()
@@ -129,17 +129,17 @@ class ReliableBackgroundScheduler:
             if result and result.get("status") == "success":
                 self.last_sync_success = datetime.now()
                 self.sync_failures = 0
-                logger.info("✅ Scheduled sync completed successfully")
+                logger.info("Scheduled sync completed successfully")
             else:
                 self.sync_failures += 1
-                logger.error(f"❌ Scheduled sync failed. Consecutive failures: {self.sync_failures}")
+                logger.error(f"Scheduled sync failed. Consecutive failures: {self.sync_failures}")
                 
                 if self.sync_failures >= self.max_consecutive_failures:
-                    logger.critical(f"🚨 CRITICAL: {self.sync_failures} consecutive sync failures! Manual intervention required.")
+                    logger.critical(f"CRITICAL: {self.sync_failures} consecutive sync failures! Manual intervention required.")
                     
         except Exception as e:
             self.sync_failures += 1
-            logger.error(f"❌ Critical error in sync wrapper: {e}")
+            logger.error(f"Critical error in sync wrapper: {e}")
             logger.error(f"Traceback: {traceback.format_exc()}")
             logger.error(f"Consecutive failures: {self.sync_failures}")
     
@@ -218,33 +218,33 @@ class ReliableBackgroundScheduler:
             if result.get("status") == "completed":
                 status = "success"
                 execution_logs = result.get('execution_logs', '')
-                output = f"✅ Automated sync completed successfully:\n" \
-                        f"  • Tickets processed: {tickets_processed}\n" \
-                        f"  • Users created: {users_created}\n" \
-                        f"  • Users skipped: {users_skipped}\n" \
-                        f"  • Execution time: {execution_time}s\n\n" \
-                        f"📋 Detailed Execution Log:\n{execution_logs}" if execution_logs else f"✅ Automated sync completed successfully:\n" \
-                        f"  • Tickets processed: {tickets_processed}\n" \
-                        f"  • Users created: {users_created}\n" \
-                        f"  • Users skipped: {users_skipped}\n" \
-                        f"  • Execution time: {execution_time}s"
+                output = f"Automated sync completed successfully:\n" \
+                        f"  - Tickets processed: {tickets_processed}\n" \
+                        f"  - Users created: {users_created}\n" \
+                        f"  - Users skipped: {users_skipped}\n" \
+                        f"  - Execution time: {execution_time}s\n\n" \
+                        f"Detailed Execution Log:\n{execution_logs}" if execution_logs else f"Automated sync completed successfully:\n" \
+                        f"  - Tickets processed: {tickets_processed}\n" \
+                        f"  - Users created: {users_created}\n" \
+                        f"  - Users skipped: {users_skipped}\n" \
+                        f"  - Execution time: {execution_time}s"
                         
                 logger.info(output.replace('\n', ' | '))
                 
                 # Log creation details if any users were created
                 if users_created > 0:
-                    logger.info(f"🎉 Created {users_created} new onboarding records from Freshservice!")
+                    logger.info(f"Created {users_created} new onboarding records from Freshservice!")
                     if result.get('created_tickets'):
                         for ticket in result.get('created_tickets', []):
-                            logger.info(f"  • Ticket {ticket.get('ticket_id')}: {ticket.get('name')} ({ticket.get('email')})")
+                            logger.info(f"  - Ticket {ticket.get('ticket_id')}: {ticket.get('name')} ({ticket.get('email')})")
                 else:
-                    logger.info("📋 No new onboarding records found in Freshservice")
+                    logger.info("No new onboarding records found in Freshservice")
             else:
                 status = "failed"
                 error_msg = result.get("error", "Unknown error occurred")
                 execution_logs = result.get('execution_logs', '')
-                output = f"❌ Automated sync failed: {error_msg}\n\n" \
-                        f"📋 Detailed Execution Log:\n{execution_logs}" if execution_logs else f"❌ Automated sync failed: {error_msg}"
+                output = f"Automated sync failed: {error_msg}\n\n" \
+                        f"Detailed Execution Log:\n{execution_logs}" if execution_logs else f"Automated sync failed: {error_msg}"
                 logger.error(output)
             
             # Update sync_logs with results
@@ -330,7 +330,7 @@ class ReliableBackgroundScheduler:
                         'completed_at': completed_at,
                         'execution_time': execution_time,
                         'error_message': error_msg,
-                        'output_message': f"❌ Critical scheduler error: {error_msg}",
+                        'output_message': f"Critical scheduler error: {error_msg}",
                         'log_id': log_id
                     })
                     db.commit()
@@ -371,16 +371,16 @@ class ReliableBackgroundScheduler:
     def _log_scheduler_status(self):
         """Log comprehensive scheduler status"""
         status = self.get_status()
-        logger.info("📊 Enhanced Scheduler Status Report:")
-        logger.info(f"  • Running: {status['running']}")
-        logger.info(f"  • Active Jobs: {status['jobs_count']}")
-        logger.info(f"  • Last Sync Attempt: {status['last_sync_attempt']}")
-        logger.info(f"  • Last Successful Sync: {status['last_sync_success']}")
-        logger.info(f"  • Consecutive Failures: {status['consecutive_failures']}")
-        logger.info(f"  • Next Sync: {status['next_sync_time']}")
+        logger.info("Enhanced Scheduler Status Report:")
+        logger.info(f"  - Running: {status['running']}")
+        logger.info(f"  - Active Jobs: {status['jobs_count']}")
+        logger.info(f"  - Last Sync Attempt: {status['last_sync_attempt']}")
+        logger.info(f"  - Last Successful Sync: {status['last_sync_success']}")
+        logger.info(f"  - Consecutive Failures: {status['consecutive_failures']}")
+        logger.info(f"  - Next Sync: {status['next_sync_time']}")
         
         for job_info in status['next_runs']:
-            logger.info(f"  • Job: {job_info['job']} | Every {job_info['interval']} {job_info['unit']} | Next: {job_info['next_run']}")
+            logger.info(f"  - Job: {job_info['job']} | Every {job_info['interval']} {job_info['unit']} | Next: {job_info['next_run']}")
 
 # Global scheduler instance
 background_scheduler = ReliableBackgroundScheduler()

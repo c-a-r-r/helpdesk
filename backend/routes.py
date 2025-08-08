@@ -516,11 +516,11 @@ def get_recent_activity(
             # Determine activity type and icon based on log data
             if log.executed_by in ["automated_scheduler", "system_scheduler"]:
                 activity_type = "sync_auto"
-                icon = "🔄"
+                icon = "AUTO"
                 title = "Automated Freshservice Sync"
             else:
                 activity_type = "sync_manual"
-                icon = "🚀"
+                icon = "MANUAL"
                 title = "Manual Freshservice Sync"
             
             # Parse additional params for more details
@@ -546,16 +546,16 @@ def get_recent_activity(
                     description = f"Processed {processed} tickets, created {created} new users"
                 else:
                     description = "Sync completed successfully"
-                icon = "✅"
+                icon = "SUCCESS"
             elif log.status.value == "failed":
                 description = f"Sync failed: {log.error_message or 'Unknown error'}"
-                icon = "❌"
+                icon = "FAILED"
             elif log.status.value == "running":
                 description = "Sync currently in progress..."
-                icon = "⏳"
+                icon = "RUNNING"
             else:
                 description = "Sync status unknown"
-                icon = "❓"
+                icon = "UNKNOWN"
             
             activity = {
                 "id": f"script-log-{log.id}",
@@ -576,7 +576,7 @@ def get_recent_activity(
             activities.append({
                 "id": "no-activity",
                 "type": "info",
-                "icon": "📝",
+                "icon": "NOTE",
                 "title": "No Recent Sync Activity",
                 "description": "No Freshservice sync activities found yet. Sync runs every 5 minutes automatically.",
                 "timestamp": "2025-08-03T12:00:00",
@@ -592,7 +592,7 @@ def get_recent_activity(
         return [{
             "id": "error-activity",
             "type": "error",
-            "icon": "⚠️",
+            "icon": "ERROR",
             "title": "Activity Error",
             "description": f"Error loading recent activity: {str(e)}",
             "timestamp": "2025-08-03T12:00:00",
@@ -725,9 +725,9 @@ async def trigger_manual_freshservice_sync(db: Session = Depends(get_db)):
         users_skipped = result.get('users_skipped', 0)
         execution_logs = result.get('execution_logs', '')
         
-        # Create detailed output message with execution logs
+        # Create detailed output message with execution logs (no emojis for DB compatibility)
         summary = f"Manual sync completed: {tickets_processed} tickets processed, {users_created} users created, {users_skipped} users skipped. Execution time: {execution_time}s"
-        output = f"{summary}\n\n📋 Detailed Execution Log:\n{execution_logs}" if execution_logs else summary
+        output = f"{summary}\n\nDetailed Execution Log:\n{execution_logs}" if execution_logs else summary
         error_message = result.get('error', '') if status == "failed" else None
         
         db.execute(text("""
