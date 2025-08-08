@@ -2,12 +2,19 @@
   <div class="login-container">
     <div class="login-card">
       <div class="logo-section">
-        <h1>Helpdesk CRM</h1>
+        <h1>Helpdesk</h1>
         <p>Sign in to your account</p>
       </div>
       
       <div class="login-content">
-        <div v-if="!claims && !loading">
+        <div v-if="error" class="error-state">
+          <div class="error-icon">❌</div>
+          <p>Authentication Failed</p>
+          <p class="error-details">{{ errorMessage }}</p>
+          <button @click="clearError" class="retry-btn">Try Again</button>
+        </div>
+        
+        <div v-else-if="!claims && !loading">
           <button @click="login" class="login-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
@@ -40,6 +47,8 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const claims = ref(null)
 const loading = ref(false)
+const error = ref(false)
+const errorMessage = ref('')
 
 const login = () => {
   loading.value = true
@@ -60,8 +69,23 @@ const checkAuthStatus = async () => {
       return
     }
 
-    // Check URL parameters for auth callback
+    // Check URL parameters for errors and auth callback
     const urlParams = new URLSearchParams(window.location.search)
+    
+    // Check for error parameters first
+    if (urlParams.has('error')) {
+      error.value = true
+      const errorType = urlParams.get('error')
+      const errorDetails = urlParams.get('details')
+      errorMessage.value = `Authentication error: ${errorType}`
+      if (errorDetails) {
+        errorMessage.value += ` - ${errorDetails}`
+      }
+      loading.value = false
+      return
+    }
+
+    // Check for token and user data
     const token = urlParams.get('token')
     const userInfo = urlParams.get('user')
     
@@ -114,6 +138,15 @@ const getUserDisplayName = () => {
   }
   
   return userName
+}
+
+const clearError = () => {
+  error.value = false
+  errorMessage.value = ''
+  // Clear error parameters from URL
+  const url = new URL(window.location.href)
+  url.search = ''
+  window.history.replaceState({}, document.title, url.pathname)
 }
 
 onMounted(() => {
@@ -220,5 +253,49 @@ onMounted(() => {
   color: #6b7280 !important;
   font-weight: 400 !important;
   font-size: 0.9rem;
+}
+
+.error-state {
+  padding: 20px;
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.error-state p {
+  color: #dc2626;
+  margin: 8px 0;
+  font-weight: 600;
+}
+
+.error-details {
+  color: #6b7280 !important;
+  font-weight: 400 !important;
+  font-size: 0.9rem;
+  margin-bottom: 20px !important;
+}
+
+.retry-btn {
+  background-color: #dc2626;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.retry-btn:hover {
+  background-color: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
 }
 </style>

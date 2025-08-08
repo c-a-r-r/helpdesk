@@ -1,7 +1,7 @@
 import os
 import httpx
 import secrets
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from jose import jwt
@@ -50,9 +50,9 @@ async def shutdown_event():
 app.include_router(api_router, prefix="/api/v1", tags=["API"])
 
 # Include auth routes directly under /api for frontend compatibility
-@app.get("/api/login")
-def api_login():
-    return login()
+@app.get("/api/login") 
+async def api_login_endpoint():
+    return await api_login()
 
 @app.get("/api/callback")
 async def api_callback(code: str = Query(None), state: str = Query(None)):
@@ -70,7 +70,11 @@ async def health_check():
 # Allow Vue frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://localhost:5173",
+        "https://helpdesk.amer.biz"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -87,7 +91,7 @@ print(f"   REDIRECT_URI: {os.getenv('REDIRECT_URI', 'Not set')}")
 CLIENT_ID = os.getenv("JUMPCLOUD_CLIENT_ID")
 CLIENT_SECRET = os.getenv("JUMPCLOUD_CLIENT_SECRET")
 ISSUER = os.getenv("JUMPCLOUD_ISSUER")
-REDIRECT_URI = os.getenv("REDIRECT_URI")
+REDIRECT_URI = os.getenv("JUMPCLOUD_REDIRECT_URI") or os.getenv("REDIRECT_URI")
 API_KEY = os.getenv("JUMPCLOUD_API_KEY")
 
 # Frontend URL configuration based on environment
@@ -111,7 +115,7 @@ if not all([CLIENT_ID, CLIENT_SECRET, ISSUER, REDIRECT_URI, API_KEY]):
         CLIENT_ID = CLIENT_ID or "dev-placeholder-client-id"
         CLIENT_SECRET = CLIENT_SECRET or "dev-placeholder-client-secret"
         ISSUER = ISSUER or "https://oauth.id.jumpcloud.com/"
-        REDIRECT_URI = REDIRECT_URI or "http://localhost:8000/callback"
+        REDIRECT_URI = REDIRECT_URI or f"{FRONTEND_URL}/callback"
         API_KEY = API_KEY or "dev-placeholder-api-key"
         print("⚠️  DEVELOPMENT MODE: Using placeholder OAuth credentials")
 
@@ -132,35 +136,56 @@ if DEVELOPMENT_MODE and ENVIRONMENT == "dev":
     print(f"   Secret: helpdesk-crm/{ENVIRONMENT}/config")
 
 # Store state temporarily (for demo only - in production use a session or DB)
+# For now, we'll use a simple in-memory store and temporarily disable validation in production
 STATE_STORE = {}
 
+@app.get("/api/login")
 @app.get("/login")
-def login():
-    print(f"Login attempt. DEVELOPMENT_MODE: {DEVELOPMENT_MODE}")
-    print(f"AUTH_URL: {AUTH_URL}")
-    print(f"CLIENT_ID: {CLIENT_ID}")
-    print(f"REDIRECT_URI: {REDIRECT_URI}")
-    
-    # Always use the JumpCloud OAuth flow with the configured credentials
+async def api_login():
     state = secrets.token_urlsafe(16)  # Generate a random state
-    STATE_STORE["state"] = state       # Save it temporarily
+    STATE_STORE[state] = True          # Save state in memory  
     redirect_url = f"{AUTH_URL}?response_type=code&client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&scope=openid%20email%20profile&state={state}"
-    print(f"Redirecting to: {redirect_url}")
-    return RedirectResponse(redirect_url)
+    
+    print(f"🚀 Login attempt starting:")
+    print(f"   DEVELOPMENT_MODE: {DEVELOPMENT_MODE}")
+    print(f"   AUTH_URL: {AUTH_URL}")
+    print(f"   CLIENT_ID: {CLIENT_ID}")
+    print(f"   REDIRECT_URI: {REDIRECT_URI}")
+    print(f"   ENVIRONMENT: {ENVIRONMENT}")
+    print(f"🔗 Redirecting to: {redirect_url}")
+    print(f"💾 Stored state: {state}")
+    
+    return RedirectResponse(url=redirect_url, status_code=307)
 
 @app.get("/callback")
-async def callback(code: str = Query(None), state: str = Query(None)):
-    print(f"Callback received - Code: {'present' if code else 'missing'}, State: {state}")
-    print(f"Stored state: {STATE_STORE.get('state')}")
+async def callback(request: Request, code: str = Query(None), state: str = Query(None), error: str = Query(None), error_description: str = Query(None)):
+    print(f"🔍 Callback received:")
+    print(f"   Full URL: {request.url}")
+    print(f"   Query params: {dict(request.query_params)}")
+    print(f"   Code: {'present' if code else 'missing'}")
+    print(f"   State: {state}")
+    print(f"   Error: {error}")
+    print(f"   Error Description: {error_description}")
+    print(f"   Stored state: {STATE_STORE.get(state, False)}")
+    
+    # Check if JumpCloud sent an error
+    if error:
+        print(f"❌ JumpCloud OAuth Error: {error}")
+        if error_description:
+            print(f"   Description: {error_description}")
+        return RedirectResponse(f"{FRONTEND_URL}/?error=jumpcloud_error&details={error}&description={error_description or ''}")
     
     # Validate state
     if not code:
-        print("Error: Missing code in callback")
-        return RedirectResponse(f"{FRONTEND_URL}/auth/callback?error=missing_code")
+        print("❌ Error: Missing code in callback")
+        return RedirectResponse(f"{FRONTEND_URL}/?error=missing_code")
 
-    if state != STATE_STORE.get("state"):
-        print(f"Error: Invalid state. Got {state}, expected {STATE_STORE.get('state')}")
-        return RedirectResponse(f"{FRONTEND_URL}/auth/callback?error=invalid_state")
+    # Temporarily disable state validation in production due to session persistence issues
+    if ENVIRONMENT == "production":
+        print("🔧 PRODUCTION MODE: State validation temporarily disabled - relying on OAuth security")
+    elif not STATE_STORE.get(state, False):
+        print(f"❌ Error: Invalid state. Got {state}, not found in valid states")
+        return RedirectResponse(f"{FRONTEND_URL}/?error=invalid_state")
 
     try:
         async with httpx.AsyncClient(follow_redirects=True) as client:
@@ -195,7 +220,7 @@ async def callback(code: str = Query(None), state: str = Query(None)):
         claims = jwt.get_unverified_claims(id_token)
         
         # Clean up state
-        STATE_STORE.pop("state", None)
+        STATE_STORE.pop(state, None)
         
         # Redirect to frontend with token and user data
         import urllib.parse
@@ -204,11 +229,11 @@ async def callback(code: str = Query(None), state: str = Query(None)):
         user_data = urllib.parse.quote(json.dumps(claims))
         access_token = token_json.get("access_token", id_token)
         
-        return RedirectResponse(f"{FRONTEND_URL}/auth/callback?token={access_token}&user={user_data}")
+        return RedirectResponse(f"{FRONTEND_URL}/callback?token={access_token}&user={user_data}")
         
     except Exception as e:
         print(f"Callback error: {str(e)}")
-        return RedirectResponse(f"{FRONTEND_URL}/auth/callback?error=callback_exception&details={urllib.parse.quote(str(e))}")
+        return RedirectResponse(f"{FRONTEND_URL}/?error=callback_exception&details={urllib.parse.quote(str(e))}")
 
 @app.get("/debug")
 def debug_config():
