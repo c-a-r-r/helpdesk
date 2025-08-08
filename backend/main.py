@@ -49,6 +49,19 @@ async def shutdown_event():
 # Include API routes
 app.include_router(api_router, prefix="/api/v1", tags=["API"])
 
+# Include auth routes directly under /api for frontend compatibility
+@app.get("/api/login")
+def api_login():
+    return login()
+
+@app.get("/api/callback")
+async def api_callback(code: str = Query(None), state: str = Query(None)):
+    return await callback(code, state)
+
+@app.get("/api/debug")
+def api_debug():
+    return debug_config()
+
 # Health check endpoint
 @app.get("/health")
 async def health_check():
@@ -76,6 +89,9 @@ CLIENT_SECRET = os.getenv("JUMPCLOUD_CLIENT_SECRET")
 ISSUER = os.getenv("JUMPCLOUD_ISSUER")
 REDIRECT_URI = os.getenv("REDIRECT_URI")
 API_KEY = os.getenv("JUMPCLOUD_API_KEY")
+
+# Frontend URL configuration based on environment
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://helpdesk.amer.biz" if ENVIRONMENT == "prod" else "http://localhost:3000")
 
 # Validate OAuth configuration
 if not all([CLIENT_ID, CLIENT_SECRET, ISSUER, REDIRECT_URI, API_KEY]):
@@ -140,11 +156,11 @@ async def callback(code: str = Query(None), state: str = Query(None)):
     # Validate state
     if not code:
         print("Error: Missing code in callback")
-        return RedirectResponse("http://localhost:3000/auth/callback?error=missing_code")
+        return RedirectResponse(f"{FRONTEND_URL}/auth/callback?error=missing_code")
 
     if state != STATE_STORE.get("state"):
         print(f"Error: Invalid state. Got {state}, expected {STATE_STORE.get('state')}")
-        return RedirectResponse("http://localhost:3000/auth/callback?error=invalid_state")
+        return RedirectResponse(f"{FRONTEND_URL}/auth/callback?error=invalid_state")
 
     try:
         async with httpx.AsyncClient(follow_redirects=True) as client:
@@ -167,13 +183,13 @@ async def callback(code: str = Query(None), state: str = Query(None)):
         if token_res.status_code != 200:
             error_msg = f"Token request failed with status {token_res.status_code}: {token_res.text}"
             print(error_msg)
-            return RedirectResponse(f"http://localhost:3000/?error=token_request_failed&details={token_res.status_code}")
+            return RedirectResponse(f"{FRONTEND_URL}/?error=token_request_failed&details={token_res.status_code}")
 
         token_json = token_res.json()
 
         if "id_token" not in token_json:
             print(f"No id_token in response: {token_json}")
-            return RedirectResponse("http://localhost:3000/?error=no_id_token")
+            return RedirectResponse(f"{FRONTEND_URL}/?error=no_id_token")
 
         id_token = token_json["id_token"]
         claims = jwt.get_unverified_claims(id_token)
@@ -188,11 +204,11 @@ async def callback(code: str = Query(None), state: str = Query(None)):
         user_data = urllib.parse.quote(json.dumps(claims))
         access_token = token_json.get("access_token", id_token)
         
-        return RedirectResponse(f"http://localhost:3000/auth/callback?token={access_token}&user={user_data}")
+        return RedirectResponse(f"{FRONTEND_URL}/auth/callback?token={access_token}&user={user_data}")
         
     except Exception as e:
         print(f"Callback error: {str(e)}")
-        return RedirectResponse(f"http://localhost:3000/auth/callback?error=callback_exception&details={urllib.parse.quote(str(e))}")
+        return RedirectResponse(f"{FRONTEND_URL}/auth/callback?error=callback_exception&details={urllib.parse.quote(str(e))}")
 
 @app.get("/debug")
 def debug_config():
