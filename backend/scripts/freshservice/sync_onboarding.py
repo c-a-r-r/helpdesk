@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Freshservice Onboarding Sync Script
-Retrieves onboarding tickets from Freshservice and creates user records in the helpdesk CRM
+Freshservice Onboarding Sync Script (Journeys-native)
+Retrieves onboarding requests from Freshservice and creates user records in the helpdesk CRM
 """
 import sys
 import os
@@ -9,235 +9,311 @@ import json
 import requests
 import secrets
 from datetime import datetime, timedelta, timezone
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # Add backend root
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add scripts directory
+from typing import Dict, Any, List, Optional
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+from pathlib import Path
+env_path = Path(__file__).parent.parent.parent.parent / '.env'
+if env_path.exists():
+    with open(env_path) as f:
+        for line in f:
+            if line.strip() and not line.startswith('#'):
+                key, value = line.strip().split('=', 1)
+                os.environ[key] = value
+
+# Make your package paths available (as in your original)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from base_script import BaseUserScript
-from aws_secrets import get_jumpcloud_api_key
-from typing import Dict, Any, List
 
 class FreshserviceOnboardingSync(BaseUserScript):
-    """Syncs onboarding tickets from Freshservice to helpdesk CRM"""
+    """Syncs Freshservice Onboarding Requests (Journeys) to helpdesk CRM"""
     
     def __init__(self):
         super().__init__()
-        self.freshdesk_api_key = None
-        self.jumpcloud_api_key = None
+        self.freshservice_api_key: Optional[str] = None
         self.region = "us-west-2"
-        self.freshdesk_domain = "americor.freshservice.com"
-    
-    def get_secrets(self, require_jumpcloud: bool = True) -> bool:
-        """Get Freshdesk & JumpCloud API keys from centralized secrets manager"""
+        self.freshservice_domain = os.getenv("FRESHSERVICE_DOMAIN", "americor.freshservice.com")
+        self.default_headers = {"Accept": "application/json"}
+        self.base_url = f"https://{self.freshservice_domain}/api/v2"
+
+        # workspace handling
+        # If you know your main workspace (e.g., IT), set FRESHSERVICE_WORKSPACE_ID in env.
+        self.workspace_id = os.getenv("FRESHSERVICE_WORKSPACE_ID")  # string or None
+
+    # ------------------------------
+    # Secrets
+    # ------------------------------
+    def get_secrets(self) -> bool:
+        """
+        Get configuration from AWS Secrets Manager or fallback to .env file
+        """
         try:
-            # Get API keys from centralized secrets manager
-            self.freshdesk_api_key = os.getenv("FRESHDESK_API_KEY")
-            freshdesk_domain = os.getenv("FRESHDESK_DOMAIN")
-            
-            if freshdesk_domain:
-                self.freshdesk_domain = freshdesk_domain
-            
-            if not self.freshdesk_api_key:
-                self.log_error("FRESHDESK_API_KEY not found in environment variables")
-                return False
-            
-            # JumpCloud API key is optional for read-only operations
-            try:
-                self.jumpcloud_api_key = get_jumpcloud_api_key()
-                if self.jumpcloud_api_key:
-                    self.log_info("Successfully retrieved both Freshservice and JumpCloud API keys")
-                else:
-                    if require_jumpcloud:
-                        self.log_error("Failed to retrieve JumpCloud API key")
-                        return False
-                    else:
-                        self.log_warning("JumpCloud API key not available - will only fetch tickets, not create users")
-            except Exception as e:
-                if require_jumpcloud:
-                    self.log_error(f"Error getting JumpCloud API key: {e}")
-                    return False
-                else:
-                    self.log_warning(f"JumpCloud API key not available: {e} - will only fetch tickets")
-            
-            self.log_info("Successfully retrieved Freshservice API key")
-            return True
-            
+            from aws_secrets import get_freshdesk_credentials
+            secrets = get_freshdesk_credentials()
+            if secrets and secrets.get('api_key'):
+                self.freshservice_api_key = secrets['api_key']
+                print("Successfully retrieved Freshservice API key from AWS Secrets Manager")
+                return True
+        except ImportError:
+            print("Warning: AWS Secrets Manager not available, falling back to .env file")
         except Exception as e:
-            self.log_error(f"Error getting secrets: {e}")
-            return False
-    
-    def get_recent_onboarding_tickets(self, hours_back: int = 3) -> List[int]:
-        """Get Freshdesk tickets updated in the specified time window"""
+            print(f"Error retrieving secrets from AWS: {e}")
+        
+        # Fallback to .env file
         try:
-            time_ago = (datetime.now(timezone.utc) - timedelta(hours=hours_back)).isoformat()
-            url = f"https://{self.freshdesk_domain}/api/v2/tickets"
-            params = {"updated_since": time_ago, "per_page": 100}
-            
-            self.log_info(f"Fetching tickets updated since: {time_ago}")
-            
-            resp = requests.get(url, auth=(self.freshdesk_api_key, "X"), params=params, timeout=30)
-            
-            if resp.status_code != 200:
-                self.log_error(f"Error fetching tickets: {resp.status_code} {resp.text}")
-                return []
-            
-            tickets = resp.json()
-            if isinstance(tickets, list):
-                # API returns array directly
-                onboarding_tickets = [t["id"] for t in tickets if t["subject"].startswith("NEW ONBOARDING")]
+            load_dotenv()
+            api_key = os.getenv('FRESHDESK_API_KEY')
+            if api_key:
+                self.freshservice_api_key = api_key
+                print("Using Freshservice API key from .env file (fallback)")
+                return True
             else:
-                # API returns object with tickets key
-                tickets_list = tickets.get("tickets", [])
-                onboarding_tickets = [t["id"] for t in tickets_list if t["subject"].startswith("NEW ONBOARDING")]
-            
-            self.log_info(f"Found {len(onboarding_tickets)} onboarding tickets: {onboarding_tickets}")
-            return onboarding_tickets
-            
+                print("Error: FRESHDESK_API_KEY not found in environment variables")
+                return False
         except Exception as e:
-            self.log_error(f"Error fetching recent tickets: {e}")
-            return []
-    
-    def get_ticket_requested_items(self, ticket_id: int) -> List[Dict[str, Any]]:
-        """Get ticket details (requested_items & custom_fields)"""
+            print(f"Error loading .env file: {e}")
+            return False
+
+    # ------------------------------
+    # HTTP helpers
+    # ------------------------------
+    def _headers(self, workspace_id: Optional[str] = None) -> Dict[str, str]:
+        h = dict(self.default_headers)
+        if workspace_id:
+            h["X-Flow-Workspace-Id"] = str(workspace_id)
+        return h
+
+    def _get(self, path: str, params: Dict[str, Any] = None, workspace_id: Optional[str] = None) -> requests.Response:
+        url = f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
+        return requests.get(url, auth=(self.freshservice_api_key, "X"), headers=self._headers(workspace_id), params=params, timeout=30)
+
+    def list_workspaces(self) -> List[str]:
+        """Return list of workspace IDs (strings). If single-workspace, return []."""
         try:
-            url = f"https://{self.freshdesk_domain}/api/v2/tickets/{ticket_id}/requested_items"
-            resp = requests.get(url, auth=(self.freshdesk_api_key, "X"), timeout=30)
-            
-            if resp.status_code != 200:
-                self.log_error(f"Failed to fetch requested_items for ticket {ticket_id}: {resp.status_code}")
+            r = self._get("workspaces")
+            if r.status_code != 200:
                 return []
-            
-            response_data = resp.json()
-            return response_data.get("requested_items", [])
-            
-        except Exception as e:
-            self.log_error(f"Error fetching ticket {ticket_id} requested items: {e}")
+            data = r.json()
+            return [str(w["id"]) for w in data.get("workspaces", [])]
+        except Exception:
             return []
-    
-    def transform_freshservice_data(self, ticket_id: int, custom_fields: Dict[str, Any]) -> Dict[str, Any]:
-        """Transform Freshservice custom fields to helpdesk CRM user format"""
-        
-        # Debug: Log all available custom fields to identify the correct department field name
-        self.log_info(f"Available custom fields for ticket {ticket_id}: {list(custom_fields.keys())}")
-        self.log_info(f"Department field value: '{custom_fields.get('department', 'NOT_FOUND')}'")
-        self.log_info(f"Departments field value: '{custom_fields.get('departments', 'NOT_FOUND')}'")
-        
-        # Extract company email from display_name and company
-        first_name = custom_fields.get("first_name", "")
-        last_name = custom_fields.get("last_name", "")
-        company = custom_fields.get("company", "").lower()
-        
-        # Generate company email based on company
-        username = f"{first_name.lower()}.{last_name.lower()}" if first_name and last_name else ""
-        
-        company_domain_map = {
-            "credit9": "credit9.com",
-            "americor": "americor.com"
-        }
-        
-        domain = company_domain_map.get(company, "americor.com")
+
+    # ------------------------------
+    # Onboarding requests (Journeys)
+    # ------------------------------
+    def list_recent_onboarding_requests(self, hours_back: int = 5) -> List[Dict[str, Any]]:
+        """
+        Fetch onboarding_requests updated in the last N hours.
+        Tries:
+          1) explicit workspace (env var) if provided
+          2) default (no workspace header)
+          3) all workspaces discovered via /workspaces
+        Returns list of onboarding_request dicts.
+        """
+        print(f"DEBUG: list_recent_onboarding_requests called with hours_back={hours_back}")
+        since_iso = (datetime.now(timezone.utc) - timedelta(hours=hours_back)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        print(f"DEBUG: Looking for requests since {since_iso}")
+        params = {"page": 1, "per_page": 100}
+        results: List[Dict[str, Any]] = []
+
+        def scan_ctx(wid: Optional[str]) -> None:
+            page = 1
+            while True:
+                params["page"] = page
+                r = self._get("onboarding_requests", params=params, workspace_id=wid)
+                if r.status_code != 200:
+                    self.log_warning(f"/onboarding_requests {wid or '(default)'}: {r.status_code} {r.text[:200]}")
+                    break
+                data = r.json()
+                items = data.get("onboarding_requests", [])
+                if not items:
+                    break
+                # filter by updated_since manually (API may not accept updated_since for this endpoint in all accounts)
+                for ob in items:
+                    updated_at = ob.get("updated_at") or ob.get("created_at")
+                    if updated_at and updated_at >= since_iso:
+                        results.append({**ob, "_workspace_id": wid})
+                page += 1
+
+        # 1) explicit workspace if provided
+        if self.workspace_id:
+            self.log_info(f"Scanning onboarding requests in workspace {self.workspace_id} since {since_iso}")
+            scan_ctx(self.workspace_id)
+
+        # 2) default context
+        self.log_info(f"Scanning onboarding requests (default workspace) since {since_iso}")
+        scan_ctx(None)
+
+        # 3) all workspaces
+        for wid in self.list_workspaces():
+            # skip if same as explicit
+            if self.workspace_id and str(wid) == str(self.workspace_id):
+                continue
+            self.log_info(f"Scanning onboarding requests in workspace {wid} since {since_iso}")
+            scan_ctx(wid)
+
+        self.log_info(f"Found {len(results)} onboarding requests across contexts")
+        return results
+
+    def get_onboarding_request_full(self, onboarding_id: int, workspace_id: Optional[str]) -> Optional[Dict[str, Any]]:
+        r = self._get(f"onboarding_requests/{onboarding_id}", workspace_id=workspace_id)
+        if r.status_code != 200:
+            self.log_error(f"Failed to fetch onboarding_request {onboarding_id}: {r.status_code} {r.text[:200]}")
+            return None
+        return r.json().get("onboarding_request")
+
+    # ------------------------------
+    # Transform fields -> CRM user
+    # ------------------------------
+    def transform_freshservice_fields(self, onboarding_fields: Dict[str, Any], fallback_ticket_id: Optional[int]) -> Dict[str, Any]:
+        """
+        Map Onboarding Request fields (cf_*, msf_*, doj, etc.) to your CRM schema.
+        Example fields observed:
+          cf_first_name, cf_last_name, cf_display_name, cf_email, cf_phone_number,
+          cf_title, cf_department, cf_manager, cf_city, cf_state, cf_zip_code,
+          cf_strett_name (typo), msf_company (list), msf_address_type (list),
+          msf_location_first_day (list), doj (Start Date), cf_extras_details, ...
+        """
+        # Normalize multi-select/list values
+        def norm(v):
+            if isinstance(v, list):
+                return ", ".join(map(str, v))
+            return v
+
+        first = onboarding_fields.get("cf_first_name", "") or ""
+        last  = onboarding_fields.get("cf_last_name", "") or ""
+        display_name = onboarding_fields.get("cf_display_name", f"{first} {last}".strip())
+
+        # company can be list (msf_company: ['Americor'])
+        company_raw = onboarding_fields.get("msf_company")
+        company = (company_raw[0] if isinstance(company_raw, list) and company_raw else company_raw) or ""
+        company_l = str(company).lower()
+
+        # username and company email
+        username = f"{first.lower()}.{last.lower()}" if first and last else ""
+        domain = {"credit9": "credit9.com", "americor": "americor.com"}.get(company_l, "americor.com")
         company_email = f"{username}@{domain}" if username else ""
-        
-        # Parse and format start_date for MySQL
-        start_date = custom_fields.get("start_date", "")
+
+        # Start date: doj ("08-29-2025" or similar). Keep robust parsing.
+        start_date_str = onboarding_fields.get("doj", "")
         formatted_start_date = None
-        if start_date:
+        if start_date_str:
             try:
-                # Parse ISO format date (2025-08-29T15:00:00Z)
                 from dateutil import parser
-                parsed_date = parser.parse(start_date)
-                # Format for MySQL datetime (YYYY-MM-DD HH:MM:SS)
-                formatted_start_date = parsed_date.strftime("%Y-%m-%d %H:%M:%S")
+                parsed = parser.parse(start_date_str)
+                formatted_start_date = parsed.strftime("%Y-%m-%d %H:%M:%S")
             except Exception as e:
-                self.log_error(f"Error parsing start_date '{start_date}': {e}")
-                formatted_start_date = None
-        
-        # Transform the data to match your helpdesk CRM format
-        password = secrets.token_urlsafe(16)  # Generate a random password
-        
+                self.log_warning(f"Could not parse doj '{start_date_str}': {e}")
+
+        # Address fields (note: schema typo cf_strett_name)
+        street = onboarding_fields.get("cf_strett_name") or onboarding_fields.get("cf_street_name") or ""
+
+        password = secrets.token_urlsafe(16)
+
         user_data = {
-            # Basic info
-            "freshservice_ticket_id": ticket_id,
+            "freshservice_ticket_id": str(fallback_ticket_id or onboarding_fields.get("ticket_id") or ""),
             "username": username,
-            "first_name": first_name,
-            "last_name": last_name,
-            "display_name": custom_fields.get("display_name", f"{first_name} {last_name}"),
+            "first_name": first,
+            "last_name": last,
+            "display_name": display_name,
             "company_email": company_email,
-            "personal_email": custom_fields.get("email", ""),
-            
-            # Company info
-            "company": custom_fields.get("company", ""),
-            "title": custom_fields.get("title", ""),
-            "department": custom_fields.get("departments", ""),  # Note: Freshservice uses 'departments' (plural)
-            "manager": custom_fields.get("manager", ""),
+            "personal_email": onboarding_fields.get("cf_email", ""),
+
+            "company": company or "",
+            "title": onboarding_fields.get("cf_title", ""),
+            "department": onboarding_fields.get("cf_department", ""),  # single dept observed
+            "manager": onboarding_fields.get("cf_manager", ""),
             "start_date": formatted_start_date,
-            
-            # Contact info
-            "phone_number": str(custom_fields.get("phone_number", "")),
-            
-            # Address info
-            "address_type": custom_fields.get("address_type", ""),
-            "street_name": custom_fields.get("street_name", ""),
-            "city": custom_fields.get("city", ""),
-            "state": custom_fields.get("state", ""),
-            "zip_code": str(custom_fields.get("zip_code", "")),
-            
-            # Work location
-            "location_first_day": custom_fields.get("location_first_day", ""),
-            
-            # Additional details
-            "extras_details": custom_fields.get("extras_details", ""),
-            
-            # System info (for future use)
-            "hostname": custom_fields.get("hostname", ""),
-            
-            # Status tracking
+
+            "phone_number": str(onboarding_fields.get("cf_phone_number", "")),
+
+            "address_type": norm(onboarding_fields.get("msf_address_type", "")),
+            "street_name": street,
+            "city": onboarding_fields.get("cf_city", ""),
+            "state": onboarding_fields.get("cf_state", ""),
+            "zip_code": str(onboarding_fields.get("cf_zip_code", "")),
+
+            "location_first_day": norm(onboarding_fields.get("msf_location_first_day", "")),
+
+            "extras_details": onboarding_fields.get("cf_extras_details", ""),
+            "hostname": "",
+
             "onboarding_status": "pending",
             "sync_source": "freshservice",
             "sync_timestamp": datetime.now().isoformat(),
             "password": password,
         }
-        
         return user_data
-    
+
+    # ------------------------------
+    # Validation (required by BaseUserScript)
+    # ------------------------------
+    def validate_user_data(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate user data before processing"""
+        errors = []
+        warnings = []
+        
+        # Required fields
+        required_fields = ["first_name", "last_name", "company_email"]
+        for field in required_fields:
+            if not user_data.get(field):
+                errors.append(f"Missing required field: {field}")
+        
+        # Email validation
+        email = user_data.get("company_email", "")
+        if email and "@" not in email:
+            errors.append("Invalid email format")
+        
+        # Username validation
+        if user_data.get("username") and not user_data["username"].replace(".", "").replace("_", "").isalnum():
+            warnings.append("Username contains special characters")
+        
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings
+        }
+
+    # ------------------------------
+    # DB write (unchanged from your logic, just called with new mapping)
+    # ------------------------------
     def save_user_to_database(self, user_data: Dict[str, Any]) -> bool:
-        """Save user data to the helpdesk CRM database"""
         try:
-            # Import database models here to avoid circular imports
             from sqlalchemy import create_engine, text
             from sqlalchemy.orm import sessionmaker
-            import os
-            
-            # Get database connection from environment
+
             db_host = os.getenv('DB_HOST', 'localhost')
             db_port = os.getenv('DB_PORT', '3306')
             db_user = os.getenv('DB_USER', 'helpdesk')
             db_password = os.getenv('DB_PASSWORD', 'helpdesk123')
             db_name = os.getenv('DB_NAME', 'helpdesk_crm')
-            
+
             connection_string = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
             engine = create_engine(connection_string)
             Session = sessionmaker(bind=engine)
             session = Session()
-            
-            # Check if user already exists based on company_email or freshservice_ticket_id
+
+            # Check existing
             existing_user_query = text("""
                 SELECT id FROM onboarding 
                 WHERE company_email = :email OR notes LIKE :ticket_search OR ticket_number = :ticket_number
                 LIMIT 1
             """)
-            
+
             existing_user = session.execute(existing_user_query, {
                 "email": user_data["company_email"],
                 "ticket_search": f"%freshservice_ticket_id:{user_data['freshservice_ticket_id']}%",
                 "ticket_number": str(user_data['freshservice_ticket_id'])
             }).fetchone()
-            
+
             if existing_user:
                 self.log_info(f"User already exists for ticket {user_data['freshservice_ticket_id']}: {user_data['company_email']}")
                 session.close()
                 return "skipped"
-            
-            # Insert new user
+
             insert_query = text("""
                 INSERT INTO onboarding (
                     username, first_name, last_name, display_name, company_email, personal_email, title, 
@@ -251,10 +327,7 @@ class FreshserviceOnboardingSync(BaseUserScript):
                     :password, :created_by, NOW(), NOW()
                 )
             """)
-            
-            password = user_data.get("password", None)
-            
-            # Remove detailed JSON object from notes
+
             session.execute(insert_query, {
                 "username": user_data["username"],
                 "first_name": user_data["first_name"],
@@ -268,67 +341,61 @@ class FreshserviceOnboardingSync(BaseUserScript):
                 "start_date": user_data["start_date"] or None,
                 "phone_number": user_data["phone_number"],
                 "company": user_data["company"],
-                "status": "PENDING",  # Use enum value for status
-                "notes": "",  # Empty notes field
+                "status": "PENDING",
+                "notes": "",
                 "ticket_number": str(user_data["freshservice_ticket_id"]),
-                "location_first_day": user_data["location_first_day"],
-                "address_type": user_data["address_type"] or "RESIDENTIAL",  # Default enum value
+                "location_first_day": user_data["location_first_day"] or "Remote",
+                "address_type": user_data["address_type"] or "RESIDENTIAL",
                 "street_name": user_data["street_name"],
                 "city": user_data["city"],
                 "state": user_data["state"],
                 "zip_code": user_data["zip_code"],
-                "password": password,
-                "created_by": "freshdesk-sync"  # Mark as sync-created
+                "password": user_data["password"],
+                "created_by": "freshservice-sync"
             })
-            
+
             session.commit()
             session.close()
-            
-            self.log_info(f"Successfully saved user to database: {user_data['company_email']}")
+            self.log_info(f"Saved user to DB: {user_data['company_email']}")
             return True
-            
+
         except Exception as e:
-            self.log_error(f"Error saving user to database: {e}")
+            self.log_error(f"DB error: {e}")
             if 'session' in locals():
                 session.rollback()
                 session.close()
             return False
-    
-    def validate_user_data(self) -> bool:
-        """
-        For Freshservice sync, we don't need user input validation
-        since we're fetching data from API
-        """
-        return True
-    
+
+    # ------------------------------
+    # Execute
+    # ------------------------------
     def execute(self) -> Dict[str, Any]:
-        """
-        Execute the Freshservice sync operation - this is the implementation from the first execute method
-        """
-        self.log_info("Starting Freshservice onboarding sync...")
-        
-        # For this sync we don't need user data, use default values
-        hours_back = 5
-        
-        # Get API credentials - for now just require Freshservice, make JumpCloud optional
-        if not self.get_secrets(require_jumpcloud=False):
+        print("DEBUG: Starting execute() method")
+        self.log_info("Starting Freshservice onboarding sync (Journeys)…")
+
+        hours_back = int(os.getenv("SYNC_WINDOW_HOURS", "24"))  # Changed from 5 to 24 hours
+        print(f"DEBUG: Sync window set to {hours_back} hours")
+
+        print("DEBUG: About to call get_secrets()")
+        if not self.get_secrets():
+            print("DEBUG: get_secrets() failed")
             return {
                 "status": "failed",
                 "error": "Failed to retrieve Freshservice API credentials",
                 "message": "Unable to access Freshservice API",
                 "execution_logs": self.get_execution_logs()
             }
-        
+        print("DEBUG: get_secrets() succeeded")
+
         try:
-            # Get recent onboarding tickets from Freshservice
-            self.log_info(f"Fetching onboarding tickets from last {hours_back} hours...")
-            ticket_ids = self.get_recent_onboarding_tickets(hours_back)
-            
-            if not ticket_ids:
-                self.log_info("No onboarding tickets found in the specified time window")
+            print("DEBUG: About to call list_recent_onboarding_requests()")
+            onboarding_list = self.list_recent_onboarding_requests(hours_back=hours_back)
+            print(f"DEBUG: Found {len(onboarding_list) if onboarding_list else 0} onboarding requests")
+            if not onboarding_list:
+                self.log_info("No onboarding requests found in the time window")
                 return {
                     "status": "completed",
-                    "message": "No new onboarding tickets to process",
+                    "message": "No new onboarding requests to process",
                     "tickets_processed": 0,
                     "users_created": 0,
                     "users_skipped": 0,
@@ -337,82 +404,91 @@ class FreshserviceOnboardingSync(BaseUserScript):
                     "sync_timestamp": datetime.now().isoformat(),
                     "execution_logs": self.get_execution_logs()
                 }
-            
-            self.log_info(f"Found {len(ticket_ids)} tickets to process")
-            
-            # Process each ticket
+
             users_created = 0
             users_skipped = 0
-            processed_tickets = []
-            
-            for ticket_id in ticket_ids:
-                self.log_info(f"Processing ticket {ticket_id}...")
-                
-                # Get requested items for this ticket
-                requested_items = self.get_ticket_requested_items(ticket_id)
-                
-                for item in requested_items:
-                    custom_fields = item.get("custom_fields", {})
-                    
-                    # Skip if no essential data
-                    if not custom_fields.get("first_name") or not custom_fields.get("last_name"):
-                        self.log_info(f"Skipping ticket {ticket_id} - missing essential user data")
-                        users_skipped += 1
-                        continue
-                    
-                    # Transform data
-                    user_data = self.transform_freshservice_data(ticket_id, custom_fields)
-                    
-                    self.log_info(f"Ticket {ticket_id} - User: {user_data['display_name']} ({user_data['company_email']})")
-                    self.log_info(f"Department: {user_data['department']}, Title: {user_data['title']}")
-                    
-                    # Save to database
-                    result = self.save_user_to_database(user_data)
-                    if result == "skipped":
-                        users_skipped += 1
-                        self.log_info(f"User skipped (already exists): {user_data['company_email']}")
-                    elif result:
-                        users_created += 1
-                        self.log_info(f"User created: {user_data['company_email']}")
-                    else:
-                        users_skipped += 1
-                        self.log_error(f"Failed to create user: {user_data['company_email']}")
-                    
-                    processed_tickets.append({
-                        "ticket_id": ticket_id,
-                        "user_name": user_data['display_name'],
-                        "company_email": user_data['company_email'],
-                        "department": user_data['department'],
-                        "title": user_data['title']
-                    })
-            
+            processed = []
+
+            for ob in onboarding_list:
+                ob_id = ob.get("id")
+                wid   = ob.get("_workspace_id")  # may be None (default context)
+                full  = self.get_onboarding_request_full(ob_id, wid)
+                if not full:
+                    continue
+
+                fields = full.get("fields") or {}
+                # minimal sanity: require first/last
+                if not fields.get("cf_first_name") or not fields.get("cf_last_name"):
+                    self.log_info(f"Skipping onboarding_request {ob_id} - missing first/last name")
+                    users_skipped += 1
+                    continue
+
+                # Find the SR ticket id (if present on the object)
+                fallback_ticket_id = full.get("ticket_id") or ob.get("ticket_id")
+
+                user_data = self.transform_freshservice_fields(fields, fallback_ticket_id)
+                self.log_info(f"OB {ob_id} -> {user_data['display_name']} ({user_data['company_email']})")
+
+                result = self.save_user_to_database(user_data)
+                if result == "skipped":
+                    users_skipped += 1
+                elif result:
+                    users_created += 1
+                else:
+                    users_skipped += 1
+
+                processed.append({
+                    "onboarding_id": ob_id,
+                    "ticket_id": user_data["freshservice_ticket_id"],
+                    "user_name": user_data["display_name"],
+                    "company_email": user_data["company_email"],
+                    "department": user_data["department"],
+                    "title": user_data["title"]
+                })
+
             self.log_info(f"Sync completed. Created: {users_created}, Skipped: {users_skipped}")
-            
             return {
                 "status": "completed",
-                "message": f"Processed {len(ticket_ids)} tickets from Freshservice",
-                "tickets_processed": len(ticket_ids),
+                "message": f"Processed {len(processed)} onboarding requests",
+                "tickets_processed": len(processed),
                 "users_created": users_created,
                 "users_skipped": users_skipped,
                 "sync_window_hours": hours_back,
-                "processed_tickets": processed_tickets,
+                "processed_tickets": processed,
                 "sync_timestamp": datetime.now().isoformat(),
                 "execution_logs": self.get_execution_logs()
             }
-            
+
         except Exception as e:
-            error_msg = f"Error during Freshservice sync: {str(e)}"
-            self.log_error(error_msg)
+            err = f"Error during Freshservice onboarding sync: {e}"
+            self.log_error(err)
             return {
                 "status": "failed",
-                "error": error_msg,
+                "error": err,
                 "message": "Failed to sync onboarding data from Freshservice",
                 "execution_logs": self.get_execution_logs()
             }
 
+    def run(self):
+        """Override BaseUserScript.run() to bypass stdin reading"""
+        print("DEBUG: Custom run() method called")
+        try:
+            print("DEBUG: About to call execute() directly")
+            result = self.execute()
+            print("DEBUG: execute() completed successfully")
+            self.output_success(result)
+        except Exception as e:
+            print(f"DEBUG: Exception in run(): {e}")
+            self.output_error(f"Script execution failed: {str(e)}")
+
 def main():
+    print("DEBUG: main() function called")
     script = FreshserviceOnboardingSync()
+    print("DEBUG: FreshserviceOnboardingSync instance created")
+    print("DEBUG: About to call script.run()")
     script.run()
+    print("DEBUG: script.run() completed")
 
 if __name__ == "__main__":
+    print("DEBUG: Script starting - __name__ == '__main__'")
     main()

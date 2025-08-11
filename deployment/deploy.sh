@@ -11,9 +11,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-APP_DIR="/opt/helpdesk-crm"
-BACKUP_DIR="/opt/backups"
-LOG_FILE="/var/log/helpdesk-deploy.log"
+APP_DIR="/home/ec2-user/helpdesk-crm"
+BACKUP_DIR="/home/ec2-user/backups"
+LOG_FILE="/home/ec2-user/helpdesk-deploy.log"
 DEPLOY_DATE=$(date +"%Y%m%d_%H%M%S")
 
 # Logging function
@@ -117,10 +117,19 @@ install_dependencies() {
 setup_app_directory() {
     log "📁 Setting up application directory..."
     
-    # Create directories with proper permissions
-    sudo mkdir -p "$APP_DIR" "$BACKUP_DIR" /var/log/helpdesk
-    sudo chown -R $USER:$USER "$APP_DIR" "$BACKUP_DIR" /var/log/helpdesk
-    chmod 755 "$APP_DIR" "$BACKUP_DIR"
+    # Create directories with proper permissions (no sudo needed for home directory)
+    mkdir -p "$BACKUP_DIR" 
+    chmod 755 "$BACKUP_DIR"
+    
+    # Application directory should already exist from rsync deployment
+    if [[ ! -d "$APP_DIR" ]]; then
+        error "Application directory not found: $APP_DIR. Please deploy code first via rsync."
+    fi
+    
+    # Ensure proper ownership (should already be correct)
+    if [[ ! -w "$APP_DIR" ]]; then
+        error "No write permission to $APP_DIR"
+    fi
 }
 
 # Clone or update application code
@@ -138,17 +147,17 @@ deploy_application_code() {
         git stash push -m "Auto-stash before deployment $DEPLOY_DATE" || true
         git pull origin main || error "Failed to update application code"
     else
-        log "Cloning application code..."
+        log "Application directory exists but not a git repository..."
+        log "Using existing files (deployed via rsync)"
         
-        # Remove existing directory if it exists and is not a git repo
-        if [[ -d "$APP_DIR" ]] && [[ ! -d "$APP_DIR/.git" ]]; then
-            sudo rm -rf "$APP_DIR"
-            sudo mkdir -p "$APP_DIR"
-            sudo chown -R $USER:$USER "$APP_DIR"
+        # Ensure we're in the right directory
+        cd "$APP_DIR" || error "Application directory not found: $APP_DIR"
+        
+        # Create backup if directory has content
+        if [[ "$(ls -A .)" ]]; then
+            mkdir -p "$BACKUP_DIR"
+            cp -r . "$BACKUP_DIR/backup_$DEPLOY_DATE" || warn "Failed to create backup"
         fi
-        
-        git clone https://github.com/c-a-r-r/helpdesk.git "$APP_DIR" || error "Failed to clone repository"
-        cd "$APP_DIR"
     fi
     
     # Ensure script permissions
@@ -171,26 +180,12 @@ configure_environment() {
         fi
     fi
     
-    # Interactive environment configuration
-    echo ""
-    echo -e "${YELLOW}=== ENVIRONMENT CONFIGURATION ===${NC}"
-    echo "Please review and update your .env file with production values:"
-    echo ""
-    echo "Key settings to verify:"
-    echo "  - DB_HOST (RDS endpoint)"
-    echo "  - CORS_ORIGINS (your domain)"
-    echo "  - REDIRECT_URI (your domain)"
-    echo "  - API_BASE_URL (your domain)"
-    echo "  - JUMPCLOUD_ISSUER (your org)"
-    echo ""
-    read -p "Do you want to edit the .env file now? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        ${EDITOR:-nano} .env
-    fi
-    
     # Validate critical environment variables
-    source .env
+    if [[ -f .env ]]; then
+        source .env
+    else
+        error ".env file not found"
+    fi
     
     local missing_vars=()
     [[ -z "${DB_HOST:-}" ]] && missing_vars+=("DB_HOST")
@@ -198,17 +193,52 @@ configure_environment() {
     [[ -z "${REDIRECT_URI:-}" ]] && missing_vars+=("REDIRECT_URI")
     
     if [[ ${#missing_vars[@]} -gt 0 ]]; then
-        error "Missing required environment variables: ${missing_vars[*]}"
+        warn "Missing recommended environment variables: ${missing_vars[*]}"
     fi
-    
-    # Test AWS connectivity
-    log "Testing AWS connectivity..."
-    aws sts get-caller-identity > /dev/null || error "AWS credentials not configured or invalid"
     
     # Test RDS connectivity (if configured)
     if [[ -n "${DB_HOST:-}" ]]; then
         log "Testing database connectivity..."
         timeout 10 bash -c "</dev/tcp/${DB_HOST}/3306" || warn "Cannot connect to database. Please verify RDS configuration."
+    fi
+}
+
+# Copy SSL certificates for nginx container
+copy_ssl_certificates() {
+    log "🔐 Copying SSL certificates..."
+    
+    local domain="helpdesk.amer.biz"
+    local ssl_dir="./nginx/ssl"
+    
+    # Create SSL directory if it doesn't exist
+    mkdir -p "$ssl_dir"
+    
+    # Check if Let's Encrypt certificates exist
+    if [[ -f "/etc/letsencrypt/live/$domain/fullchain.pem" ]]; then
+        log "Found Let's Encrypt certificates for $domain"
+        
+        # Copy actual certificate files (not symlinks)
+        sudo cp "/etc/letsencrypt/live/$domain/fullchain.pem" "$ssl_dir/"
+        sudo cp "/etc/letsencrypt/live/$domain/privkey.pem" "$ssl_dir/"
+        
+        # Set proper ownership
+        sudo chown $USER:$USER "$ssl_dir"/*.pem
+        
+        # Set proper permissions
+        chmod 644 "$ssl_dir/fullchain.pem"
+        chmod 600 "$ssl_dir/privkey.pem"
+        
+        log "SSL certificates copied successfully!"
+        ls -la "$ssl_dir"
+    else
+        warn "SSL certificates not found for $domain"
+        warn "Make sure to run 'sudo certbot certonly --nginx -d $domain' first"
+        warn "Continuing without SSL certificates - HTTPS will not work"
+        
+        # Create placeholder files to prevent nginx errors
+        touch "$ssl_dir/fullchain.pem"
+        touch "$ssl_dir/privkey.pem"
+        chown $USER:$USER "$ssl_dir"/*.pem
     fi
 }
 
@@ -223,6 +253,9 @@ deploy_containers() {
         log "Stopping existing containers..."
         docker-compose down --timeout 30
     fi
+    
+    # Copy SSL certificates before building containers
+    copy_ssl_certificates
     
     # Build containers with no cache for production
     log "Building containers..."
@@ -264,7 +297,7 @@ setup_monitoring() {
     
     # Setup log rotation
     sudo tee /etc/logrotate.d/helpdesk-crm > /dev/null <<EOF
-/var/log/helpdesk/*.log {
+$APP_DIR/logs/*.log {
     daily
     rotate 30
     compress
@@ -275,16 +308,6 @@ setup_monitoring() {
     postrotate
         cd $APP_DIR && docker-compose -f docker-compose.prod.yml restart backend nginx
     endscript
-}
-
-/opt/helpdesk-crm/logs/*.log {
-    daily
-    rotate 30
-    compress
-    delaycompress
-    missingok
-    notifempty
-    create 0644 $USER $USER
 }
 EOF
 
@@ -300,7 +323,7 @@ EOF
     tee "$APP_DIR/scripts/monitor.sh" > /dev/null <<'EOF'
 #!/bin/bash
 # Basic monitoring script
-APP_DIR="/opt/helpdesk-crm"
+APP_DIR="/home/ec2-user/helpdesk-crm"
 cd "$APP_DIR"
 
 echo "=== Container Status ==="
@@ -359,6 +382,8 @@ TimeoutStartSec=300
 TimeoutStopSec=120
 Restart=on-failure
 RestartSec=30
+User=ec2-user
+Group=ec2-user
 
 [Install]
 WantedBy=multi-user.target
@@ -382,7 +407,7 @@ verify_deployment() {
     # Test health endpoints
     local health_tests=(
         "http://localhost/health"
-        "http://localhost/api/v1/health"
+        "http://localhost/api/health"
     )
     
     for endpoint in "${health_tests[@]}"; do

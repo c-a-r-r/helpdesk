@@ -134,7 +134,7 @@
             <h3>🛡️ Automox Operations</h3>
             <div class="script-list">
               <button 
-                @click="executeScript('offboarding', 'remove_automox_agent')"
+                @click="executeScript('automox', 'remove_agent')"
                 class="script-btn automox"
                 :disabled="isExecuting"
               >

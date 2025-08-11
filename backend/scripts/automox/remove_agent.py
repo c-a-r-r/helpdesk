@@ -10,6 +10,11 @@ import requests
 import os
 import sys
 from typing import Optional, Dict, Any
+from pathlib import Path
+
+# Add the parent directory to the path to import base_script  
+sys.path.append(str(Path(__file__).parent.parent))
+from base_script import BaseUserScript
 
 
 class AutomoxManager:
@@ -27,12 +32,12 @@ class AutomoxManager:
         }
     
     def _load_credentials(self):
-        """Load API credentials from AWS Secrets Manager"""
+        """Load API credentials from AWS Secrets Manager or environment variables"""
         try:
-            # Use the production secret ARN
+            # Try AWS Secrets Manager first
             secret_arn = os.getenv(
                 "AUTOMOX_SECRET_ARN", 
-                "arn:aws:secretsmanager:us-west-2:134308154914:secret:helpdesk-crm/automox-credentials"
+                "arn:aws:secretsmanager:us-west-2:134308154914:secret:helpdesk-crm/prod-zUcloT"
             )
             
             client = boto3.client("secretsmanager", region_name="us-west-2")
@@ -43,11 +48,31 @@ class AutomoxManager:
             self.api_key = secrets.get(f"AUTOMOX_API_KEY_{self.environment}")
             self.org_id = secrets.get(f"AUTOMOX_ORG_ID_{self.environment}")
             
-            if not self.api_key or not self.org_id:
-                raise ValueError(f"Missing Automox credentials for environment: {self.environment}")
+            if self.api_key and self.org_id:
+                print(f"✅ Loaded Automox credentials from AWS Secrets Manager")
+                return
                 
         except Exception as e:
-            print(f"Error loading Automox credentials: {e}")
+            print(f"⚠️ Could not load from AWS Secrets Manager: {e}")
+            print("📋 Trying environment variables as fallback...")
+        
+        # Fallback to environment variables
+        try:
+            self.api_key = os.getenv(f'AUTOMOX_API_KEY_{self.environment}') or os.getenv('AUTOMOX_API_KEY')
+            self.org_id = os.getenv(f'AUTOMOX_ORG_ID_{self.environment}') or os.getenv('AUTOMOX_ORG_ID')
+            
+            if self.api_key and self.org_id:
+                print(f"✅ Loaded Automox credentials from environment variables")
+                return
+            
+            # If no credentials found
+            raise ValueError(f"Missing Automox credentials for environment: {self.environment}")
+                
+        except Exception as e:
+            print(f"❌ Error loading Automox credentials: {e}")
+            print(f"💡 Please set environment variables:")
+            print(f"   export AUTOMOX_API_KEY_{self.environment}=your_api_key")
+            print(f"   export AUTOMOX_ORG_ID_{self.environment}=your_org_id")
             raise
     
     def get_all_devices(self) -> list:
@@ -196,6 +221,64 @@ class AutomoxManager:
         return result
 
 
+class AutomoxRemovalScript(BaseUserScript):
+    """Integration wrapper for Automox agent removal in offboarding system"""
+    
+    def __init__(self):
+        super().__init__()
+        
+    def validate_user_data(self) -> bool:
+        """Validate that we have the required user data"""
+        if not self.user_data:
+            self.log_error("No user data provided")
+            return False
+            
+        # We need hostname to remove the agent
+        if not self.user_data.get('hostname'):
+            self.log_error("Hostname is required for Automox agent removal")
+            return False
+            
+        return True
+    
+    def execute(self) -> Dict[str, Any]:
+        """Execute Automox agent removal using the user's hostname"""
+        try:
+            hostname = self.user_data.get('hostname')
+            self.log_info(f"Starting Automox agent removal for hostname: {hostname}")
+            
+            # Use the AutomoxManager to remove the agent
+            environment = os.getenv("AUTOMOX_ENVIRONMENT", "PROD")
+            result = execute_script(hostname=hostname, environment=environment)
+            
+            if result['success']:
+                self.log_info(f"✅ {result['message']}")
+                return {
+                    "status": "success",
+                    "message": result['message'],
+                    "details": {
+                        "device_id": result.get('device_id'),
+                        "hostname": hostname
+                    }
+                }
+            else:
+                self.log_warning(f"⚠️ {result['message']}")
+                return {
+                    "status": "warning", 
+                    "message": result['message'],
+                    "details": {
+                        "hostname": hostname
+                    }
+                }
+                
+        except Exception as e:
+            error_msg = f"Error removing Automox agent: {str(e)}"
+            self.log_error(error_msg)
+            return {
+                "status": "failed",
+                "message": error_msg
+            }
+
+
 def main():
     """Main function for command-line usage"""
     if len(sys.argv) < 2:
@@ -261,4 +344,11 @@ def execute_script(hostname: str, dry_run: bool = False, environment: str = "PRO
 
 
 if __name__ == "__main__":
-    main()
+    # Check if this is being run as part of the offboarding system
+    if len(sys.argv) > 1 and sys.argv[1] == "--offboarding-mode":
+        # Run as BaseUserScript for integration
+        script = AutomoxRemovalScript()
+        script.run()
+    else:
+        # Run standalone mode
+        main()
