@@ -39,13 +39,13 @@
               <span>Offboard Users</span>
             </router-link>
           </li>
-          <!-- <li>
-            <router-link to="/offboarded-users" class="nav-item" :class="{ active: $route.path === '/offboarded-users' }">
-              <i class="fas fa-users-slash icon"></i>
-              <span>Offboarded Users Info</span>
+          <li>
+            <router-link to="/bulk-onboard" class="nav-item" :class="{ active: $route.path === '/bulk-onboard' }">
+              <i class="fas fa-users icon"></i>
+              <span>Bulk Onboard Users</span>
             </router-link>
-          </li> -->
-                    <li>
+          </li>
+          <li>
             <router-link to="/settings" class="nav-item" :class="{ active: $route.path === '/settings' }">
               <i class="fas fa-cog icon"></i>
               <span>Settings</span>

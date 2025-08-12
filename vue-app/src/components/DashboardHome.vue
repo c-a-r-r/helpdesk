@@ -94,7 +94,7 @@
         </div>
         
         <!-- Offboarded Card -->
-        <div class="stat-card clickable" @click="navigateTo('/offboarded-users')">
+        <div class="stat-card clickable" @click="navigateTo('/bulk-onboard')">
           <div class="card-icon offboarded">
             <i class="fas fa-user-times"></i>
           </div>
@@ -155,14 +155,14 @@
             </div>
           </div>
           
-          <div class="action-card" @click="navigateTo('/offboarded-users')">
+          <div class="action-card" @click="navigateTo('/bulk-onboard')">
             <div class="action-icon">
-              <i class="fas fa-clipboard-list"></i>
+              <i class="fas fa-users"></i>
             </div>
             <div class="action-content">
-              <h3>View Offboarded Users</h3>
-              <p>Review information about previously offboarded users</p>
-              <button class="btn-primary">View List <i class="fas fa-arrow-right"></i></button>
+              <h3>Bulk Onboard Users</h3>
+              <p>Upload and process multiple users for onboarding at once</p>
+              <button class="btn-primary">Get Started <i class="fas fa-arrow-right"></i></button>
             </div>
           </div>
         </div>

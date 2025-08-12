@@ -75,9 +75,9 @@ const router = createRouter({
           component: () => import('@/components/OffboardingToolsView.vue')
         },
         {
-          path: '/offboarded-users',
-          name: 'offboarded-users',
-          component: () => import('@/components/OffboardedUsersView.vue')
+          path: '/bulk-onboard',
+          name: 'bulk-onboard',
+          component: () => import('@/components/OnboardUsersBulkView.vue')
         },
         {
           path: '/settings',
