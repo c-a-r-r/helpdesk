@@ -269,9 +269,9 @@ async def execute_script(
             if not company_email:
                 if user_data.username:
                     company_email = f"{user_data.username}@americor.com"
-                elif user_data.first_name and user_data.last_name:
+                elif user_data.display_name and user_data.display_last_name:
                     # Generate username from name if missing
-                    username = f"{user_data.first_name.lower()}.{user_data.last_name.lower()}"
+                    username = f"{user_data.display_name.lower()}.{user_data.display_last_name.lower()}"
                     company_email = f"{username}@americor.com"
                 else:
                     company_email = None
@@ -279,9 +279,9 @@ async def execute_script(
             script_input = {
                 "id": user_data.id,
                 "company": user_data.company,
-                "first_name": user_data.first_name,
-                "last_name": user_data.last_name,
+                "legal_name": user_data.legal_name,
                 "display_name": user_data.display_name,
+                "display_last_name": user_data.display_last_name,
                 "personal_email": user_data.personal_email,
                 "company_email": company_email,
                 "phone_number": user_data.phone_number,
@@ -295,7 +295,7 @@ async def execute_script(
                 "city": user_data.city,
                 "state": user_data.state,
                 "zip_code": user_data.zip_code,
-                "username": user_data.username or (f"{user_data.first_name.lower()}.{user_data.last_name.lower()}" if user_data.first_name and user_data.last_name else None),
+                "username": user_data.username or (f"{user_data.display_name.lower()}.{user_data.display_last_name.lower()}" if user_data.display_name and user_data.display_last_name else None),
                 "department_ou": user_data.department_ou,
                 "hostname": user_data.hostname,
                 "password": user_data.password,
@@ -322,6 +322,41 @@ async def execute_script(
             user_id=request.user_id or 0,  # Use 0 if no specific user
             additional_params=request.additional_params
         )
+        
+        # Update onboarding status fields based on script execution results
+        if request.user_id and result:
+            user_data = OnboardingCRUD.get(db, request.user_id)
+            if user_data:
+                from models import ScriptStatus
+                from datetime import datetime
+                
+                # Determine which status field to update based on script type and name
+                status_value = ScriptStatus.SUCCESS if result.get("success") else ScriptStatus.FAILED
+                current_time = datetime.now()
+                
+                update_data = {}
+                
+                if request.script_type == "jumpcloud" and request.script_name == "create_user":
+                    update_data["jumpcloud_status"] = status_value
+                    if result.get("success"):
+                        update_data["jumpcloud_created_at"] = current_time
+                    else:
+                        update_data["jumpcloud_error"] = result.get("error", "Unknown error")
+                        
+                elif request.script_type == "google" and request.script_name == "create_user":
+                    update_data["google_status"] = status_value
+                    if result.get("success"):
+                        update_data["google_created_at"] = current_time
+                    else:
+                        update_data["google_error"] = result.get("error", "Unknown error")
+                
+                # Update the onboarding record if we have status updates
+                if update_data:
+                    for field, value in update_data.items():
+                        setattr(user_data, field, value)
+                    
+                    db.commit()
+                    db.refresh(user_data)
         
         return result
         
@@ -1139,12 +1174,13 @@ async def execute_offboarding_script(
         script_log = OffboardingScriptLogCRUD.create(db, log_data)
 
         # Convert offboarding data to dict for script execution
-        # For JumpCloud termination, we only need essential fields
+        # Include essential fields and hostname for Automox scripts
         script_input = {
             "id": offboarding_data.id,
             "first_name": offboarding_data.first_name,
             "last_name": offboarding_data.last_name,
             "company_email": offboarding_data.company_email,
+            "hostname": getattr(offboarding_data, 'hostname', None),
             # Optional fields that may be useful for logging/context
             "requested_by": getattr(offboarding_data, 'requested_by', None),
             "notes": getattr(offboarding_data, 'notes', None)
@@ -1171,13 +1207,40 @@ async def execute_offboarding_script(
             end_time = time.time()
             execution_time = int(end_time - start_time)
             
-            # Update the log with results
+            # Update the log with results - map warning to SUCCESS with special output
+            from models import ScriptStatus
+            script_status = ScriptStatus.FAILED  # default
+            output_data = result.get("output", "")
+            
+            if result.get("success", False):
+                # Check if there's a nested result with more specific status
+                nested_result = result.get("result", {})
+                if isinstance(nested_result, dict) and "status" in nested_result:
+                    nested_status = nested_result["status"].lower()
+                    if nested_status == "success":
+                        script_status = ScriptStatus.SUCCESS
+                    elif nested_status == "warning":
+                        # Store as SUCCESS but preserve the warning info in output
+                        script_status = ScriptStatus.SUCCESS
+                        # Add a marker to the output so frontend can detect warnings
+                        if isinstance(result.get("output"), str) and '{"success": true, "result":' in result.get("output", ""):
+                            # Output already contains the JSON with warning status
+                            pass
+                        else:
+                            # Ensure the output contains the warning marker
+                            output_data = f"WARNING_STATUS: {output_data}"
+                    elif nested_status == "failed":
+                        script_status = ScriptStatus.FAILED
+                else:
+                    # No nested result, use top-level success
+                    script_status = ScriptStatus.SUCCESS
+            
             OffboardingScriptLogCRUD.update_completion(
                 db, 
                 script_log.id,
-                status="completed" if result.get("success", False) else "failed",
-                output=result.get("output", ""),
-                error_message=result.get("error") if not result.get("success", False) else None,
+                status=script_status,
+                output=output_data,
+                error_message=result.get("error") if script_status == ScriptStatus.FAILED else None,
                 execution_time_seconds=execution_time
             )
             

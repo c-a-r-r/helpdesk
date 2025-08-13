@@ -25,15 +25,26 @@
       <div v-else-if="user" class="user-form-container">
         <form class="onboarding-form" @submit.prevent="submitUpdate">
           <div class="form-grid">
-            <!-- Status -->
+            <!-- JumpCloud Status -->
             <div class="form-group">
-              <label for="status">Status</label>
-              <select id="status" v-model="user.status">
-                <option value="Pending">Pending</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
+              <label for="jumpcloudStatus">JumpCloud Status</label>
+              <div class="status-display">
+                <span :class="getAccountStatusClass(user.jumpcloudStatus)">
+                  <i :class="getAccountStatusIcon(user.jumpcloudStatus)"></i>
+                  {{ getAccountStatusText(user.jumpcloudStatus) }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- Google Status -->
+            <div class="form-group">
+              <label for="googleStatus">Google Workspace Status</label>
+              <div class="status-display">
+                <span :class="getAccountStatusClass(user.googleStatus)">
+                  <i :class="getAccountStatusIcon(user.googleStatus)"></i>
+                  {{ getAccountStatusText(user.googleStatus) }}
+                </span>
+              </div>
             </div>
             
             <!-- Company -->
@@ -43,23 +54,25 @@
                      placeholder="e.g., Americor">
             </div>
             
-            <!-- First Name -->
+            <!-- Legal Name -->
             <div class="form-group">
-              <label for="firstName">First Name *</label>
-              <input type="text" id="firstName" v-model="user.firstName" required>
-            </div>
-            
-            <!-- Last Name -->
-            <div class="form-group">
-              <label for="lastName">Last Name *</label>
-              <input type="text" id="lastName" v-model="user.lastName" required>
+              <label for="legalName">Legal Name *</label>
+              <input type="text" id="legalName" v-model="user.legalName" required
+                     placeholder="e.g., Wendy Lee King">
             </div>
             
             <!-- Display Name -->
             <div class="form-group">
-              <label for="displayName">Display Name</label>
-              <input type="text" id="displayName" v-model="user.displayName" 
-                     placeholder="Auto-generated as First Last" readonly class="readonly-field">
+              <label for="displayName">Display Name *</label>
+              <input type="text" id="displayName" v-model="user.displayName" required
+                     placeholder="e.g., Wendy">
+            </div>
+            
+            <!-- Display Last Name -->
+            <div class="form-group">
+              <label for="displayLastName">Display Last Name *</label>
+              <input type="text" id="displayLastName" v-model="user.displayLastName" required
+                     placeholder="e.g., King">
             </div>
             
             <!-- Personal Email -->
@@ -70,9 +83,10 @@
             
             <!-- Company Email -->
             <div class="form-group">
-              <label for="companyEmail">Company Email</label>
-              <input type="email" id="companyEmail" v-model="user.companyEmail" 
-                     placeholder="Auto-generated as username@americor.com" readonly class="readonly-field">
+              <label for="companyEmail">Company Email *</label>
+              <input type="email" id="companyEmail" v-model="user.companyEmail" required
+                     placeholder="e.g., john.smith@americor.com or john.smith2@americor.com">
+              <!-- <small class="field-note">Edit manually if needed (add numbers/letters for duplicates)</small> -->
             </div>
             
             <!-- Phone Number -->
@@ -132,8 +146,13 @@
             <!-- Password -->
             <div class="form-group">
               <label for="password">Password</label>
-              <input type="text" id="password" v-model="user.password" 
-                     placeholder="Auto-generated 16-character password" readonly class="readonly-field">
+              <div class="password-field-container">
+                <input type="text" id="password" v-model="user.password" 
+                       placeholder="Auto-generated 16-character password" readonly class="readonly-field">
+                <button type="button" class="btn-outline btn-xs" @click="renewPassword">
+                  <i class="fa-solid fa-refresh"></i> 
+                </button>
+              </div>
             </div>
             
             <!-- Department OU -->
@@ -316,26 +335,21 @@ export default {
       handler(newUser) {
         if (!newUser) return
         
-        // Auto-generate username when first/last name changes
-        if (newUser.firstName && newUser.lastName) {
-          newUser.username = `${newUser.firstName.toLowerCase()}.${newUser.lastName.toLowerCase()}`
+        // Auto-generate username when display name/last name changes
+        if (newUser.displayName && newUser.displayLastName) {
+          newUser.username = `${newUser.displayName.toLowerCase()}.${newUser.displayLastName.toLowerCase()}`
           
-          // Auto-generate display name
-          newUser.displayName = `${newUser.firstName} ${newUser.lastName}`
-          
-          // Auto-generate company email using the username
-          newUser.companyEmail = `${newUser.username}@americor.com`
-          
-          // Auto-populate alias fields using the username
-          newUser.advantageAlias = `${newUser.username}@advantageteam.law`
-          newUser.credit9Alias = `${newUser.username}@credit9.com`
+          // Note: For editing users, email generation is disabled to allow manual editing
+          // Auto-populate alias fields using the username only if they're empty
+          if (!newUser.advantageAlias) {
+            newUser.advantageAlias = `${newUser.username}@advantageteam.law`
+          }
+          if (!newUser.credit9Alias) {
+            newUser.credit9Alias = `${newUser.username}@credit9.com`
+          }
         } else {
-          // Clear fields when names are not complete
+          // Clear username when names are not complete, but preserve emails
           newUser.username = ''
-          newUser.displayName = ''
-          newUser.companyEmail = ''
-          newUser.advantageAlias = ''
-          newUser.credit9Alias = ''
         }
         
         // Auto-populate Department OU when department changes
@@ -359,11 +373,12 @@ export default {
         const userData = response.data
         
         this.user = {
-          status: userData.status || 'Pending',
+          jumpcloudStatus: userData.jumpcloud_status || 'Not Created',
+          googleStatus: userData.google_status || 'Not Created',
           company: userData.company || 'Americor',
-          firstName: userData.first_name || '',
-          lastName: userData.last_name || '',
-          displayName: userData.display_name || `${userData.first_name || ''} ${userData.last_name || ''}`,
+          legalName: userData.legal_name || '',
+          displayName: userData.display_name || '',
+          displayLastName: userData.display_last_name || '',
           personalEmail: userData.personal_email || '',
           companyEmail: userData.company_email || '',
           phoneNumber: userData.phone_number || '',
@@ -372,7 +387,7 @@ export default {
           department: userData.department || '',
           startDate: userData.start_date ? userData.start_date.split('T')[0] : new Date().toISOString().split('T')[0],
           locationFirstDay: userData.location_first_day || '',
-          username: userData.username || `${userData.first_name?.toLowerCase() || ''}.${userData.last_name?.toLowerCase() || ''}`,
+          username: userData.username || `${userData.display_name?.toLowerCase() || ''}.${userData.display_last_name?.toLowerCase() || ''}`,
           password: userData.password || this.generatePassword(),
           departmentOU: userData.department_ou || this.getDepartmentOU(userData.department) || '',
           credit9Alias: userData.credit9_alias || `${userData.username || ''}@credit9.com`,
@@ -407,11 +422,8 @@ export default {
       
       try {
         // Auto-generate missing fields
-        if (!this.user.username && this.user.firstName && this.user.lastName) {
-          this.user.username = `${this.user.firstName.toLowerCase()}.${this.user.lastName.toLowerCase()}`
-        }
-        if (!this.user.displayName && this.user.firstName && this.user.lastName) {
-          this.user.displayName = `${this.user.firstName} ${this.user.lastName}`
+        if (!this.user.username && this.user.displayName && this.user.displayLastName) {
+          this.user.username = `${this.user.displayName.toLowerCase()}.${this.user.displayLastName.toLowerCase()}`
         }
         if (!this.user.advantageAlias && this.user.username) {
           this.user.advantageAlias = `${this.user.username}@advantageteam.law`
@@ -448,9 +460,9 @@ export default {
         
         const onboardingData = {
           company: this.user.company,
-          first_name: this.user.firstName,
-          last_name: this.user.lastName,
+          legal_name: this.user.legalName,
           display_name: this.user.displayName,
+          display_last_name: this.user.displayLastName,
           personal_email: this.user.personalEmail,
           company_email: this.user.companyEmail,
           phone_number: this.user.phoneNumber ? String(this.user.phoneNumber) : null,
@@ -458,7 +470,6 @@ export default {
           manager: this.user.managerEmail,
           department: this.user.department,
           start_date: this.user.startDate ? new Date(this.user.startDate).toISOString() : new Date().toISOString(),
-          status: this.user.status,
           location_first_day: this.user.locationFirstDay || null,
           username: this.user.username,
           password: this.user.password,
@@ -503,12 +514,71 @@ export default {
     },
     
     generatePassword() {
-      const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*'
+      const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$+!&='
       let password = ''
       for (let i = 0; i < 16; i++) {
         password += chars.charAt(Math.floor(Math.random() * chars.length))
       }
       return password
+    },
+
+    renewPassword() {
+      this.user.password = this.generatePassword()
+    },
+
+    // Account status helper methods
+    getAccountStatusClass(status) {
+      const statusClass = {
+        'SUCCESS': 'account-status-success',
+        'FAILED': 'account-status-failed', 
+        'RUNNING': 'account-status-running',
+        'PENDING': 'account-status-not-created',
+        'Created': 'account-status-success',
+        'Failed': 'account-status-failed',
+        'Not Created': 'account-status-not-created',
+        // Keep lowercase for backward compatibility
+        'success': 'account-status-success',
+        'failed': 'account-status-failed',
+        'running': 'account-status-running',
+        'pending': 'account-status-not-created'
+      }
+      return statusClass[status] || 'account-status-not-created'
+    },
+
+    getAccountStatusIcon(status) {
+      const statusIcon = {
+        'SUCCESS': 'fa-solid fa-check-circle',
+        'FAILED': 'fa-solid fa-times-circle',
+        'RUNNING': 'fa-solid fa-spinner fa-spin', 
+        'PENDING': 'fa-solid fa-minus',
+        'Created': 'fa-solid fa-check-circle',
+        'Failed': 'fa-solid fa-times-circle',
+        'Not Created': 'fa-solid fa-minus',
+        // Keep lowercase for backward compatibility
+        'success': 'fa-solid fa-check-circle',
+        'failed': 'fa-solid fa-times-circle',
+        'running': 'fa-solid fa-spinner fa-spin',
+        'pending': 'fa-solid fa-minus'
+      }
+      return statusIcon[status] || 'fa-solid fa-minus'
+    },
+
+    getAccountStatusText(status) {
+      const statusText = {
+        'SUCCESS': 'Created',
+        'FAILED': 'Failed',
+        'RUNNING': 'Creating...',
+        'PENDING': 'Not Created',
+        'Created': 'Created',
+        'Failed': 'Failed',
+        'Not Created': 'Not Created',
+        // Keep lowercase for backward compatibility
+        'success': 'Created',
+        'failed': 'Failed', 
+        'running': 'Creating...',
+        'pending': 'Not Created'
+      }
+      return statusText[status] || 'Not Created'
     },
     
     handleZoomChange() {
@@ -713,6 +783,22 @@ export default {
   font-style: italic;
 }
 
+.password-field-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.password-field-container input {
+  flex: 1;
+}
+
+.btn-small {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
 /* Checkbox styles */
 .checkbox-label {
   display: flex;
@@ -822,6 +908,90 @@ export default {
 .btn-outline:hover {
   background: #667eea;
   color: white;
+}
+
+.btn-xs {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  min-width: auto;
+  height: 28px;
+  width: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.field-note {
+  display: block;
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+/* Modern Status Display Styles */
+.status-display {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 2px 0;
+}
+
+.account-status-success {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #166534;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(22, 101, 52, 0.15);
+  border: 1px solid rgba(22, 101, 52, 0.1);
+}
+
+.account-status-failed {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #dc2626;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.1);
+}
+
+.account-status-running {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1d4ed8;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.15);
+  border: 1px solid rgba(29, 78, 216, 0.1);
+}
+
+.account-status-not-created {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  color: #991b1b;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(153, 27, 27, 0.15);
+  border: 1px solid rgba(153, 27, 27, 0.1);
+  min-height: 34px;
 }
 
 /* Responsive adjustments */

@@ -60,16 +60,6 @@
             </select>
             <span>records</span>
           </div>
-          <div class="status-filter">
-            <label for="statusFilter">Status:</label>
-            <select id="statusFilter" v-model="statusFilter" class="status-select">
-              <option value="">All</option>
-              <option value="Pending">Pending</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
-          </div>
           <input 
             type="text" 
             v-model="searchQuery"
@@ -168,7 +158,7 @@
                 >
               </td>
               <!-- <td>{{ user.ticket_number || 'N/A' }}</td> -->
-              <td>{{ user.first_name }} {{ user.last_name }}</td>
+              <td>{{ user.display_name }} {{ user.display_last_name }}</td>
               <td>{{ user.company_email || 'N/A' }}</td>
               <td>{{ user.department }}</td>
               <td>{{ user.title }}</td>
@@ -185,7 +175,7 @@
                     {{ getAccountStatusText(user.jumpcloud_status) }}
                   </span>
                   <span v-else class="status-not-created">
-                    <i class="fa-solid fa-minus"></i> Not Created
+                    <i class="fa-solid fa-circle-xmark"></i> Not Created
                   </span>
                   <div v-if="user.jumpcloud_error" class="error-details" :title="user.jumpcloud_error">
                     <i class="fa-solid fa-exclamation-triangle"></i> Error
@@ -199,7 +189,7 @@
                     {{ getAccountStatusText(user.google_status) }}
                   </span>
                   <span v-else class="status-not-created">
-                    <i class="fa-solid fa-minus"></i> Not Created
+                    <i class="fa-solid fa-circle-xmark"></i> Not Created
                   </span>
                   <div v-if="user.google_error" class="error-details" :title="user.google_error">
                     <i class="fa-solid fa-exclamation-triangle"></i> Error
@@ -295,7 +285,6 @@ export default {
       loading: false,
       error: null,
       searchQuery: '',
-      statusFilter: '',
       recordsPerPage: 25,
       currentPage: 1,
       statusSortOrder: null,
@@ -322,12 +311,6 @@ export default {
           user.title?.toLowerCase().includes(query) ||
           user.username?.toLowerCase().includes(query) ||
           user.manager?.toLowerCase().includes(query)
-        )
-      }
-      
-      if (this.statusFilter) {
-        filtered = filtered.filter(user => 
-          (user.status || 'Pending') === this.statusFilter
         )
       }
       
@@ -394,10 +377,6 @@ export default {
   },
   watch: {
     searchQuery() {
-      this.currentPage = 1
-    },
-    
-    statusFilter() {
       this.currentPage = 1
     },
     
@@ -483,35 +462,69 @@ export default {
       for (const user of this.selectedUsers) {
         try {
           const currentUserEmail = this.getCurrentUserEmail()
-          const response = await axios.post('/api/v1/scripts/jumpcloud/create-user', {
+          let userClaims = sessionStorage.getItem('userClaims')
+          
+          // If no SSO claims available, create mock claims for development
+          if (!userClaims) {
+            console.warn('No SSO claims found, creating development mock claims')
+            const mockClaims = {
+              email: currentUserEmail,
+              name: 'Development User',
+              given_name: 'Development',
+              family_name: 'User',
+              Role: 'Help Desk Management Tool - Admin',
+              groups: ['Help Desk Management Tool - Admin']
+            }
+            userClaims = JSON.stringify(mockClaims)
+          }
+          
+          const requestBody = {
             script_type: "jumpcloud",
             script_name: "create_user",
             user_id: user.id,
             additional_params: {}
-          }, {
-            params: {
-              user_email: currentUserEmail
-            }
+          }
+          
+          let apiUrl = `/api/v1/scripts/execute?user_email=${encodeURIComponent(currentUserEmail)}`
+          apiUrl += `&user_claims=${encodeURIComponent(userClaims)}`
+          
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
           })
           
-          this.bulkResults.push({
-            user: user,
-            success: true,
-            message: 'Account created successfully'
-          })
+          const result = await response.json()
+          
+          if (response.ok) {
+            this.bulkResults.push({
+              user: user,
+              success: true,
+              message: 'Account created successfully'
+            })
+          } else {
+            this.bulkResults.push({
+              user: user,
+              success: false,
+              message: result.detail || result.message || 'Failed to create account'
+            })
+          }
         } catch (error) {
+          console.error('Error creating JumpCloud account for user:', user, error)
           this.bulkResults.push({
             user: user,
             success: false,
-            message: error.response?.data?.detail || 'Failed to create account'
+            message: error.message || 'Network error occurred'
           })
         }
         
         this.bulkProgress++
-        
-        // Refresh data to show updated account status
-        await this.fetchOnboardingData()
       }
+      
+      // Refresh data once at the end instead of after each user
+      await this.fetchOnboardingData()
     },
 
     async bulkCreateGoogle() {
@@ -525,35 +538,69 @@ export default {
       for (const user of this.selectedUsers) {
         try {
           const currentUserEmail = this.getCurrentUserEmail()
-          const response = await axios.post('/api/v1/scripts/google/create-user', {
+          let userClaims = sessionStorage.getItem('userClaims')
+          
+          // If no SSO claims available, create mock claims for development
+          if (!userClaims) {
+            console.warn('No SSO claims found, creating development mock claims')
+            const mockClaims = {
+              email: currentUserEmail,
+              name: 'Development User',
+              given_name: 'Development',
+              family_name: 'User',
+              Role: 'Help Desk Management Tool - Admin',
+              groups: ['Help Desk Management Tool - Admin']
+            }
+            userClaims = JSON.stringify(mockClaims)
+          }
+          
+          const requestBody = {
             script_type: "google",
             script_name: "create_user",
             user_id: user.id,
             additional_params: {}
-          }, {
-            params: {
-              user_email: currentUserEmail
-            }
+          }
+          
+          let apiUrl = `/api/v1/scripts/execute?user_email=${encodeURIComponent(currentUserEmail)}`
+          apiUrl += `&user_claims=${encodeURIComponent(userClaims)}`
+          
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
           })
           
-          this.bulkResults.push({
-            user: user,
-            success: true,
-            message: 'Account created successfully'
-          })
+          const result = await response.json()
+          
+          if (response.ok) {
+            this.bulkResults.push({
+              user: user,
+              success: true,
+              message: 'Account created successfully'
+            })
+          } else {
+            this.bulkResults.push({
+              user: user,
+              success: false,
+              message: result.detail || result.message || 'Failed to create account'
+            })
+          }
         } catch (error) {
+          console.error('Error creating Google account for user:', user, error)
           this.bulkResults.push({
             user: user,
             success: false,
-            message: error.response?.data?.detail || 'Failed to create account'
+            message: error.message || 'Network error occurred'
           })
         }
         
         this.bulkProgress++
-        
-        // Refresh data to show updated account status
-        await this.fetchOnboardingData()
       }
+      
+      // Refresh data once at the end instead of after each user
+      await this.fetchOnboardingData()
     },
 
     closeBulkProgress() {
@@ -630,7 +677,6 @@ export default {
 
     clearFilters() {
       this.searchQuery = ''
-      this.statusFilter = ''
       this.statusSortOrder = null
       this.currentPage = 1
     },
@@ -744,12 +790,10 @@ export default {
         'SUCCESS': 'account-status-success',
         'FAILED': 'account-status-failed',
         'RUNNING': 'account-status-running',
-        'PENDING': 'account-status-pending',
         // Keep lowercase for backward compatibility
         'success': 'account-status-success',
         'failed': 'account-status-failed',
-        'running': 'account-status-running',
-        'pending': 'account-status-pending'
+        'running': 'account-status-running'
       }
       return statusClass[status] || 'account-status-unknown'
     },
@@ -759,12 +803,10 @@ export default {
         'SUCCESS': 'fa-solid fa-check-circle',
         'FAILED': 'fa-solid fa-times-circle',
         'RUNNING': 'fa-solid fa-spinner fa-spin',
-        'PENDING': 'fa-solid fa-clock',
         // Keep lowercase for backward compatibility
         'success': 'fa-solid fa-check-circle',
         'failed': 'fa-solid fa-times-circle',
-        'running': 'fa-solid fa-spinner fa-spin',
-        'pending': 'fa-solid fa-clock'
+        'running': 'fa-solid fa-spinner fa-spin'
       }
       return statusIcon[status] || 'fa-solid fa-question-circle'
     },
@@ -774,12 +816,10 @@ export default {
         'SUCCESS': 'Created',
         'FAILED': 'Failed',
         'RUNNING': 'Creating...',
-        'PENDING': 'Pending',
         // Keep lowercase for backward compatibility
         'success': 'Created',
         'failed': 'Failed',
-        'running': 'Creating...',
-        'pending': 'Pending'
+        'running': 'Creating...'
       }
       return statusText[status] || 'Unknown'
     }
@@ -1044,8 +1084,7 @@ tr.selected:hover {
   flex-wrap: wrap;
 }
 
-.records-per-page,
-.status-filter {
+.records-per-page {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1053,8 +1092,7 @@ tr.selected:hover {
   color: #374151;
 }
 
-.records-select,
-.status-select {
+.records-select {
   padding: 6px 8px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
@@ -1475,19 +1513,21 @@ tr.selected:hover {
 }
 
 .account-status-success {
-  background: #dcfce7;
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
   color: #166534;
-  padding: 4px 8px;
+  padding: 4px 28px 4px 8px;
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 500;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  box-shadow: 0 1px 4px rgba(17, 79, 41, 0.197);
+  border: 1px solid rgba(22, 101, 52, 0.1);
 }
 
 .account-status-failed {
-  background: #fef2f2;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
   color: #dc2626;
   padding: 4px 8px;
   border-radius: 12px;
@@ -1496,11 +1536,13 @@ tr.selected:hover {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  box-shadow: 0 1px 4px rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.1);
 }
 
 .account-status-running {
-  background: #fef3c7;
-  color: #d97706;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1d4ed8;
   padding: 4px 8px;
   border-radius: 12px;
   font-size: 0.75rem;
@@ -1508,23 +1550,13 @@ tr.selected:hover {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-}
-
-.account-status-pending {
-  background: #f0f9ff;
-  color: #0284c7;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  box-shadow: 0 1px 4px rgba(29, 78, 216, 0.15);
+  border: 1px solid rgba(29, 78, 216, 0.1);
 }
 
 .status-not-created {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  color: #991b1b;
   padding: 4px 8px;
   border-radius: 12px;
   font-size: 0.75rem;
@@ -1532,6 +1564,8 @@ tr.selected:hover {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  box-shadow: 0 1px 4px rgba(153, 27, 27, 0.15);
+  border: 1px solid rgba(153, 27, 27, 0.1);
 }
 
 .error-details {

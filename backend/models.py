@@ -34,9 +34,9 @@ class Onboarding(Base):
     company = Column(String(255), nullable=False, default="Americor")
     
     # Personal Information
-    first_name = Column(String(100), nullable=False)
-    last_name = Column(String(100), nullable=False)
-    display_name = Column(String(200), nullable=False)
+    legal_name = Column(String(100), nullable=False)  # Changed from first_name
+    display_name = Column(String(100), nullable=False)  # Changed from last_name
+    display_last_name = Column(String(100), nullable=False)  # New field
     personal_email = Column(String(255), nullable=False)
     company_email = Column(String(255), nullable=True, unique=True)
     phone_number = Column(String(20), nullable=True)
@@ -97,8 +97,8 @@ class Offboarding(Base):
     id = Column(Integer, primary_key=True, index=True)
     
     # Personal Information
-    first_name = Column(String(100), nullable=False)
-    last_name = Column(String(100), nullable=False)
+    first_name = Column(String(100), nullable=False)  # Keep as first_name for offboarding
+    last_name = Column(String(100), nullable=False)  # Keep as last_name for offboarding
     company_email = Column(String(255), nullable=False)
     
     # System Information

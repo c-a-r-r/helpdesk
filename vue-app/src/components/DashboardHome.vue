@@ -94,7 +94,7 @@
         </div>
         
         <!-- Offboarded Card -->
-        <div class="stat-card clickable" @click="navigateTo('/bulk-onboard')">
+        <div class="stat-card">
           <div class="card-icon offboarded">
             <i class="fas fa-user-times"></i>
           </div>

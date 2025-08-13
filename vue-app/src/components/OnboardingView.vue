@@ -26,16 +26,6 @@
             </select>
             <span>records</span>
           </div>
-          <div class="status-filter">
-            <label for="statusFilter">Status:</label>
-            <select id="statusFilter" v-model="statusFilter" class="status-select">
-              <option value="">All</option>
-              <option value="Pending">Pending</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
-          </div>
           <input 
             type="text" 
             v-model="searchQuery"
@@ -101,12 +91,8 @@
               <th>Department</th>
               <th>Title</th>
               <th>Username</th>
-              <th class="sortable" @click="sortByStatus">
-                Status 
-                <i class="fa-solid fa-sort" v-if="!statusSortOrder"></i>
-                <i class="fa-solid fa-sort-up" v-if="statusSortOrder === 'asc'"></i>
-                <i class="fa-solid fa-sort-down" v-if="statusSortOrder === 'desc'"></i>
-              </th>
+              <th>JumpCloud Status</th>
+              <th>Google Status</th>
               <th>Created By</th>
               <th>Start Date</th>
               <th v-if="canEdit || canDelete" class="action-column">Actions</th>
@@ -115,15 +101,38 @@
           <tbody>
             <tr v-for="user in paginatedData" :key="user.id">
               <td>{{ user.ticket_number || 'N/A' }}</td>
-              <td>{{ user.first_name }} {{ user.last_name }}</td>
+              <td>{{ user.display_name }} {{ user.display_last_name }}</td>
               <td>{{ user.company_email || 'N/A' }}</td>
               <td>{{ user.department }}</td>
               <td>{{ user.title }}</td>
               <td>{{ user.username }}</td>
               <td>
-                <span :class="getStatusClass(user.status)">
-                  {{ user.status || 'Pending' }}
-                </span>
+                <div class="account-status">
+                  <span v-if="user.jumpcloud_status" :class="getAccountStatusClass(user.jumpcloud_status)">
+                    <i :class="getAccountStatusIcon(user.jumpcloud_status)"></i>
+                    {{ getAccountStatusText(user.jumpcloud_status) }}
+                  </span>
+                  <span v-else class="status-not-created">
+                    <i class="fa-solid fa-circle-xmark"></i> Not Created
+                  </span>
+                  <div v-if="user.jumpcloud_error" class="error-details" :title="user.jumpcloud_error">
+                    <i class="fa-solid fa-exclamation-triangle"></i> Error
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="account-status">
+                  <span v-if="user.google_status" :class="getAccountStatusClass(user.google_status)">
+                    <i :class="getAccountStatusIcon(user.google_status)"></i>
+                    {{ getAccountStatusText(user.google_status) }}
+                  </span>
+                  <span v-else class="status-not-created">
+                    <i class="fa-solid fa-circle-xmark"></i> Not Created
+                  </span>
+                  <div v-if="user.google_error" class="error-details" :title="user.google_error">
+                    <i class="fa-solid fa-exclamation-triangle"></i> Error
+                  </div>
+                </div>
               </td>
               <td>
                 <span v-if="user.created_by === 'freshdesk-sync'" class="sync-indicator">
@@ -175,17 +184,6 @@
             
             <form class="onboarding-form">
               <div class="form-grid">
-                <!-- Status -->
-                <div class="form-group">
-                  <label :for="'status-' + index">Status</label>
-                  <select :id="'status-' + index" v-model="user.status">
-                    <option value="Pending">Pending</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Cancelled">Cancelled</option>
-                  </select>
-                </div>
-                
                 <!-- Company -->
                 <div class="form-group">
                   <label :for="'company-' + index">Company *</label>
@@ -435,10 +433,8 @@ export default {
       loading: false,
       error: null,
       searchQuery: '',
-      statusFilter: '',
       recordsPerPage: 25,
       currentPage: 1,
-      statusSortOrder: null, // null, 'asc', 'desc'
       showModal: false
     }
   },
@@ -462,31 +458,6 @@ export default {
           user.username?.toLowerCase().includes(query) ||
           user.manager?.toLowerCase().includes(query)
         )
-      }
-      
-      // Apply status filter
-      if (this.statusFilter) {
-        filtered = filtered.filter(user => 
-          (user.status || 'Pending') === this.statusFilter
-        )
-      }
-      
-      // Apply status sorting
-      if (this.statusSortOrder) {
-        filtered = [...filtered].sort((a, b) => {
-          const statusA = a.status || 'Pending'
-          const statusB = b.status || 'Pending'
-          const statusOrder = ['Pending', 'In Progress', 'Completed', 'Cancelled']
-          
-          const indexA = statusOrder.indexOf(statusA)
-          const indexB = statusOrder.indexOf(statusB)
-          
-          if (this.statusSortOrder === 'asc') {
-            return indexA - indexB
-          } else {
-            return indexB - indexA
-          }
-        })
       }
       
       return filtered
@@ -572,10 +543,6 @@ export default {
       this.currentPage = 1
     },
     
-    statusFilter() {
-      this.currentPage = 1
-    },
-    
     recordsPerPage() {
       this.recordsPerPage = parseInt(this.recordsPerPage)
       this.currentPage = 1
@@ -637,25 +604,53 @@ export default {
       })
     },
 
-    getStatusClass(status) {
+    // Account status helper methods
+    getAccountStatusClass(status) {
       const statusClass = {
-        'Pending': 'status-pending',
-        'In Progress': 'status-progress',
-        'Completed': 'status-completed',
-        'Cancelled': 'status-cancelled'
+        'SUCCESS': 'account-status-success',
+        'FAILED': 'account-status-failed', 
+        'RUNNING': 'account-status-running',
+        'Created': 'account-status-success',
+        'Failed': 'account-status-failed',
+        'Not Created': 'status-not-created',
+        // Keep lowercase for backward compatibility
+        'success': 'account-status-success',
+        'failed': 'account-status-failed',
+        'running': 'account-status-running'
       }
-      return statusClass[status] || 'status-pending'
+      return statusClass[status] || 'status-not-created'
     },
 
-    sortByStatus() {
-      if (this.statusSortOrder === null) {
-        this.statusSortOrder = 'asc'
-      } else if (this.statusSortOrder === 'asc') {
-        this.statusSortOrder = 'desc'
-      } else {
-        this.statusSortOrder = null
+    getAccountStatusIcon(status) {
+      const statusIcon = {
+        'SUCCESS': 'fa-solid fa-check-circle',
+        'FAILED': 'fa-solid fa-times-circle',
+        'RUNNING': 'fa-solid fa-spinner fa-spin', 
+        'Created': 'fa-solid fa-check-circle',
+        'Failed': 'fa-solid fa-times-circle',
+        'Not Created': 'fa-solid fa-minus',
+        // Keep lowercase for backward compatibility
+        'success': 'fa-solid fa-check-circle',
+        'failed': 'fa-solid fa-times-circle',
+        'running': 'fa-solid fa-spinner fa-spin'
       }
-      this.currentPage = 1
+      return statusIcon[status] || 'fa-solid fa-question-circle'
+    },
+
+    getAccountStatusText(status) {
+      const statusText = {
+        'SUCCESS': 'Created',
+        'FAILED': 'Failed',
+        'RUNNING': 'Creating...',
+        'Created': 'Created',
+        'Failed': 'Failed',
+        'Not Created': 'Not Created',
+        // Keep lowercase for backward compatibility
+        'success': 'Created',
+        'failed': 'Failed', 
+        'running': 'Creating...'
+      }
+      return statusText[status] || 'Not Created'
     },
 
     nextPage() {
@@ -672,8 +667,6 @@ export default {
 
     clearFilters() {
       this.searchQuery = ''
-      this.statusFilter = ''
-      this.statusSortOrder = null
       this.currentPage = 1
     },
     async fetchOnboardingData() {
@@ -1496,41 +1489,19 @@ export default {
   box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
 }
 
-/* Status badges */
-.status-pending {
-  background: #fef3c7;
-  color: #d97706;
+/* Modern Status Badge Styles */
+.status-not-created {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  color: #991b1b;
   padding: 4px 8px;
   border-radius: 12px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 500;
-}
-
-.status-progress {
-  background: #dbeafe;
-  color: #1d4ed8;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.status-completed {
-  background: #d1fae5;
-  color: #065f46;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.status-cancelled {
-  background: #fee2e2;
-  color: #dc2626;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 1px 4px rgba(153, 27, 27, 0.15);
+  border: 1px solid rgba(153, 27, 27, 0.1);
 }
 
 /* Created by indicators */
@@ -1646,42 +1617,6 @@ export default {
   box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
 }
 
-/* Status badges */
-.status-pending {
-  background: #fef3c7;
-  color: #92400e;
-  padding: 1px 6px;
-  border-radius: 8px;
-  font-size: 0.65rem;
-  font-weight: 500;
-}
-
-.status-progress {
-  background: #dbeafe;
-  color: #1e40af;
-  padding: 1px 6px;
-  border-radius: 8px;
-  font-size: 0.65rem;
-  font-weight: 500;
-}
-
-.status-completed {
-  background: #dcfce7;
-  color: #166534;
-  padding: 1px 6px;
-  border-radius: 8px;
-  font-size: 0.65rem;
-  font-weight: 500;
-}
-
-.status-cancelled {
-  background: #fee2e2;
-  color: #dc2626;
-  padding: 1px 6px;
-  border-radius: 8px;
-  font-size: 0.65rem;
-  font-weight: 500;
-}
 
 /* Modal Styles */
 .modal-overlay {
@@ -1905,5 +1840,68 @@ export default {
 .password-field:hover {
   background: #f3f4f6;
   border-color: #d1d5db;
+}
+
+/* Account Status Styles */
+.account-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.account-status-success {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #166534;
+  padding: 4px 28px 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 1px 4px rgba(22, 101, 52, 0.293);
+  border: 1px solid rgba(22, 101, 52, 0.1);
+}
+
+.account-status-failed {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #dc2626;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 1px 4px rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.1);
+}
+
+.account-status-running {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1d4ed8;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 1px 4px rgba(29, 78, 216, 0.15);
+  border: 1px solid rgba(29, 78, 216, 0.1);
+}
+
+.error-details {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  cursor: help;
 }
 </style>

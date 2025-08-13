@@ -238,6 +238,34 @@ async def callback(request: Request, code: str = Query(None), state: str = Query
 @app.get("/debug")
 def debug_config():
     """Debug endpoint to check configuration"""
+
+@app.get("/dev-login")
+async def dev_login():
+    """Development-only login bypass"""
+    if ENVIRONMENT != "dev":
+        return JSONResponse({"error": "Development login not available in production"}, status_code=403)
+    
+    # Create mock user claims for development
+    mock_claims = {
+        "email": "test@americor.com",
+        "name": "Test User",
+        "given_name": "Test",
+        "family_name": "User",
+        "groups": ["Help Desk Management Tool - Admin"],  # Give admin access
+        "Role": "Help Desk Management Tool - Admin"
+    }
+    
+    import urllib.parse
+    import json
+    
+    user_data = urllib.parse.quote(json.dumps(mock_claims))
+    mock_token = "dev_token_" + secrets.token_urlsafe(32)
+    
+    print(f"🧪 Development login bypass activated")
+    print(f"   Mock user: {mock_claims['email']}")
+    print(f"   Role: {mock_claims.get('Role')}")
+    
+    return RedirectResponse(f"{FRONTEND_URL}/callback?token={mock_token}&user={user_data}")
     
     # Using environment variables configuration
     config_source = "Environment Variables"

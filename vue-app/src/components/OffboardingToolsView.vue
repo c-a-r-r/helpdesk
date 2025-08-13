@@ -198,12 +198,15 @@
             <div v-for="(log, index) in scriptLogs" 
                  :key="log.id"
                  class="log-entry"
-                 :class="{ success: isLogSuccess(log), error: !isLogSuccess(log) }"
+                 :class="getLogStatusClass(log)"
             >
               <div class="log-header">
                 <div class="log-basic">
-                  <span class="status-icon">{{ isLogSuccess(log) ? '✅' : '❌' }}</span>
+                  <span class="status-icon">{{ getStatusIcon(log) }}</span>
                   <span class="script-name">{{ log.script_type }} - {{ log.script_name }}</span>
+                  <span class="status-badge" :class="getStatusBadgeClass(log)">
+                    {{ getDetailedStatus(log) }}
+                  </span>
                   <span class="time-text">{{ formatDateTime(log.started_at) }}</span>
                   <span class="user-text">{{ log.executed_by || 'System' }}</span>
                 </div>
@@ -233,6 +236,17 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div v-if="isExecuting" class="loading-overlay">
+      <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <p>Executing script...</p>
+        <div class="loading-details">
+          <small>This may take a few moments to complete</small>
         </div>
       </div>
     </div>
@@ -296,46 +310,145 @@ export default {
       this.scriptLogs[index].expanded = !this.scriptLogs[index].expanded
     },
     
-    isLogSuccess(log) {
-      // Check status first
-      if (log.status === 'SUCCESS' || log.status === 'success') {
-        return true
-      }
-      if (log.status === 'FAILED' || log.status === 'failed' || log.status === 'ERROR') {
-        return false
-      }
+    getDetailedStatus(log) {
+      const scriptType = log.script_type.toLowerCase()
+      const scriptName = log.script_name.toLowerCase()
       
-      // Check output for success indicators if status is ambiguous
+      // Parse the output to get detailed status
       if (log.output) {
         try {
-          const outputJson = JSON.parse(log.output)
-          if (outputJson.success === true) {
-            // Check if nested result indicates failure
-            if (outputJson.result && outputJson.result.status === 'failed') {
-              return false
-            } else if (outputJson.result && outputJson.result.error) {
-              return false
+          // Check for JSON in the output
+          let outputJson = null
+          
+          // Handle cases where output might have extra text before JSON
+          const jsonMatch = log.output.match(/\{"success".*\}/)
+          if (jsonMatch) {
+            outputJson = JSON.parse(jsonMatch[0])
+          } else {
+            // Try parsing the whole output as JSON
+            outputJson = JSON.parse(log.output)
+          }
+          
+          // PRIORITY 1: Check if there's a nested result with detailed status
+          if (outputJson && outputJson.result && outputJson.result.status) {
+            const resultStatus = outputJson.result.status.toLowerCase()
+            
+            // Handle different script types with specific statuses
+            if (scriptType === 'automox') {
+              if (resultStatus === 'success') {
+                return 'Agent Removed'
+              } else if (resultStatus === 'warning') {
+                return 'Agent Not Found'
+              } else if (resultStatus === 'failed') {
+                return 'Removal Failed'
+              }
+            } else if (scriptType === 'jumpcloud') {
+              if (resultStatus === 'success') {
+                return 'User Terminated'
+              } else if (resultStatus === 'warning') {
+                return 'User Not Found'
+              } else if (resultStatus === 'failed') {
+                return 'Termination Failed'
+              }
+            } else if (scriptType === 'google' || scriptType === 'offboarding') {
+              if (resultStatus === 'success') {
+                return 'User Terminated'
+              } else if (resultStatus === 'warning') {
+                return 'User Not Found'
+              } else if (resultStatus === 'failed') {
+                return 'Termination Failed'
+              }
             }
-            return true
+            
+            // Fallback to generic status based on result.status
+            if (resultStatus === 'success') {
+              return 'Success'
+            } else if (resultStatus === 'warning') {
+              return 'Warning'
+            } else if (resultStatus === 'failed') {
+              return 'Failed'
+            }
+          }
+          
+          // PRIORITY 2: Only check top-level success if no result.status exists
+          if (outputJson && outputJson.success === true && !outputJson.result) {
+            return scriptType === 'automox' ? 'Agent Removed' : 
+                   scriptType === 'jumpcloud' ? 'User Terminated' : 
+                   scriptType === 'google' || scriptType === 'offboarding' ? 'User Terminated' : 'Success'
+          } else if (outputJson && outputJson.success === false) {
+            return 'Failed'
           }
         } catch (e) {
-          // If output is not JSON, check for text indicators
-          if (log.output.includes('failed') || 
-              log.output.includes('error') || 
-              log.output.includes('400') ||
-              log.output.includes('500') ||
-              log.output.includes('Failed')) {
-            return false
-          } else if (log.output.includes('"success": true') || 
-                     log.output.includes('successfully') || 
-                     log.output.includes('completed')) {
-            return true
+          // Handle non-JSON output or parsing errors
+          const output = log.output.toLowerCase()
+          
+          // Check for warning markers first
+          if (output.includes('warning_status:')) {
+            return scriptType === 'automox' ? 'Agent Not Found' : 'User Not Found'
+          }
+          
+          if (output.includes('not found')) {
+            return scriptType === 'automox' ? 'Agent Not Found' : 'User Not Found'
+          } else if (output.includes('successfully') || output.includes('completed')) {
+            return scriptType === 'automox' ? 'Agent Removed' : 'User Terminated'
+          } else if (output.includes('failed') || output.includes('error')) {
+            return 'Failed'
           }
         }
       }
       
-      // Default to false if we can't determine success
-      return false
+      // PRIORITY 3: Check database status as final fallback
+      if (log.status === 'SUCCESS' || log.status === 'success') {
+        return scriptType === 'automox' ? 'Agent Removed' : 'User Terminated'
+      } else if (log.status === 'WARNING' || log.status === 'warning') {
+        return scriptType === 'automox' ? 'Agent Not Found' : 'User Not Found'
+      } else if (log.status === 'FAILED' || log.status === 'failed' || log.status === 'ERROR') {
+        return 'Failed'
+      }
+      
+      return 'Unknown'
+    },
+    
+    getStatusIcon(log) {
+      const status = this.getDetailedStatus(log)
+      
+      if (status.includes('Removed') || status.includes('Terminated') || status === 'Success') {
+        return '✅'
+      } else if (status.includes('Not Found') || status === 'Warning') {
+        return '⚠️'
+      } else if (status.includes('Failed') || status === 'Failed') {
+        return '❌'
+      } else {
+        return '❓'
+      }
+    },
+    
+    getLogStatusClass(log) {
+      const status = this.getDetailedStatus(log)
+      
+      if (status.includes('Removed') || status.includes('Terminated') || status === 'Success') {
+        return 'log-success'
+      } else if (status.includes('Not Found') || status === 'Warning') {
+        return 'log-warning'
+      } else if (status.includes('Failed') || status === 'Failed') {
+        return 'log-error'
+      } else {
+        return 'log-unknown'
+      }
+    },
+    
+    getStatusBadgeClass(log) {
+      const status = this.getDetailedStatus(log)
+      
+      if (status.includes('Removed') || status.includes('Terminated') || status === 'Success') {
+        return 'badge-success'
+      } else if (status.includes('Not Found') || status === 'Warning') {
+        return 'badge-warning'
+      } else if (status.includes('Failed') || status === 'Failed') {
+        return 'badge-error'
+      } else {
+        return 'badge-unknown'
+      }
     },
     
     formatDateTime(dateString) {
@@ -717,6 +830,60 @@ export default {
   border-left: 4px solid #ef4444;
 }
 
+/* New detailed status classes */
+.log-entry.log-success {
+  border-left: 4px solid #10b981;
+}
+
+.log-entry.log-warning {
+  border-left: 4px solid #f59e0b;
+}
+
+.log-entry.log-error {
+  border-left: 4px solid #ef4444;
+}
+
+.log-entry.log-unknown {
+  border-left: 4px solid #6b7280;
+}
+
+/* Status badges */
+.status-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  min-width: 100px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.badge-success {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #10b981;
+}
+
+.badge-warning {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+
+.badge-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #ef4444;
+}
+
+.badge-unknown {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #6b7280;
+}
+
 .log-header {
   display: flex;
   justify-content: space-between;
@@ -730,6 +897,7 @@ export default {
   align-items: center;
   gap: 12px;
   flex: 1;
+  flex-wrap: wrap;
 }
 
 .status-icon {
@@ -741,19 +909,22 @@ export default {
   font-weight: 600;
   color: #1f2937;
   text-transform: capitalize;
-  min-width: 180px;
+  min-width: 140px;
+  flex-shrink: 0;
 }
 
 .time-text {
   color: #6b7280;
   font-size: 0.85rem;
-  min-width: 140px;
+  min-width: 120px;
+  flex-shrink: 0;
 }
 
 .user-text {
   color: #6b7280;
   font-size: 0.85rem;
-  min-width: 120px;
+  min-width: 100px;
+  flex-shrink: 0;
 }
 
 .expand-btn {
@@ -1018,6 +1189,76 @@ export default {
   
   .user-text {
     display: none;
+  }
+}
+
+/* Loading Overlay Styles */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.loading-content {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  min-width: 280px;
+  animation: slideIn 0.3s ease-out;
+}
+
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #f59e0b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+.loading-content p {
+  margin: 0 0 8px 0;
+  color: #374151;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.loading-details small {
+  color: #6b7280;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { 
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 </style>

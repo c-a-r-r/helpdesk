@@ -248,7 +248,8 @@ class AutomoxRemovalScript(BaseUserScript):
             
             # Use the AutomoxManager to remove the agent
             environment = os.getenv("AUTOMOX_ENVIRONMENT", "PROD")
-            result = execute_script(hostname=hostname, environment=environment)
+            automox = AutomoxManager(environment=environment)
+            result = automox.remove_agent_by_hostname(hostname, dry_run=False)
             
             if result['success']:
                 self.log_info(f"✅ {result['message']}")
@@ -279,76 +280,8 @@ class AutomoxRemovalScript(BaseUserScript):
             }
 
 
-def main():
-    """Main function for command-line usage"""
-    if len(sys.argv) < 2:
-        print("Usage: python remove_automox_agent.py <hostname> [--dry-run] [--env PROD|TEST]")
-        print("Example: python remove_automox_agent.py A-10V13Z3")
-        sys.exit(1)
-    
-    hostname = sys.argv[1]
-    dry_run = "--dry-run" in sys.argv
-    
-    # Get environment
-    environment = "PROD"
-    if "--env" in sys.argv:
-        env_index = sys.argv.index("--env")
-        if env_index + 1 < len(sys.argv):
-            environment = sys.argv[env_index + 1].upper()
-    
-    print(f"🤖 Automox Agent Removal - Environment: {environment}")
-    print(f"Target hostname: {hostname}")
-    if dry_run:
-        print("🧪 DRY RUN MODE - No actual deletions will be performed")
-    print("-" * 50)
-    
-    try:
-        automox = AutomoxManager(environment=environment)
-        result = automox.remove_agent_by_hostname(hostname, dry_run=dry_run)
-        
-        print(f"Result: {result['message']}")
-        
-        if result["success"]:
-            sys.exit(0)
-        else:
-            sys.exit(1)
-            
-    except Exception as e:
-        print(f"Fatal error: {e}")
-        sys.exit(1)
-
-
-# For integration with the script manager
-def execute_script(hostname: str, dry_run: bool = False, environment: str = "PROD") -> Dict[str, Any]:
-    """
-    Execute Automox agent removal for integration with the helpdesk system
-    
-    Args:
-        hostname: The hostname of the device to remove
-        dry_run: If True, don't actually delete anything
-        environment: PROD or TEST
-    
-    Returns:
-        Dict with success status and message
-    """
-    try:
-        automox = AutomoxManager(environment=environment)
-        return automox.remove_agent_by_hostname(hostname, dry_run=dry_run)
-    except Exception as e:
-        return {
-            "success": False,
-            "message": f"Error executing Automox removal: {str(e)}",
-            "device_id": None,
-            "hostname": hostname
-        }
-
-
 if __name__ == "__main__":
-    # Check if this is being run as part of the offboarding system
-    if len(sys.argv) > 1 and sys.argv[1] == "--offboarding-mode":
-        # Run as BaseUserScript for integration
-        script = AutomoxRemovalScript()
-        script.run()
-    else:
-        # Run standalone mode
-        main()
+    # This script is only designed to be called from UserToolsView via the script manager
+    # It expects user data with hostname to be passed via stdin
+    script = AutomoxRemovalScript()
+    script.run()

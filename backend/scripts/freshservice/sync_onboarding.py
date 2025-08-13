@@ -183,9 +183,29 @@ class FreshserviceOnboardingSync(BaseUserScript):
                 return ", ".join(map(str, v))
             return v
 
-        first = onboarding_fields.get("cf_first_name", "") or ""
-        last  = onboarding_fields.get("cf_last_name", "") or ""
-        display_name = onboarding_fields.get("cf_display_name", f"{first} {last}".strip())
+        # Map FreshService fields to our new schema
+        # FreshService might have cf_first_name/cf_last_name that we'll map to display_name/display_last_name
+        # and legal_name might come from a different field or combination
+        cf_first_name = onboarding_fields.get("cf_first_name", "") or ""
+        cf_last_name = onboarding_fields.get("cf_last_name", "") or ""
+        cf_legal_name = onboarding_fields.get("cf_legal_name", "") or ""
+        
+        # Determine our new field structure
+        # If legal_name is provided, use it, otherwise fallback to first name
+        legal_name = cf_legal_name or cf_first_name or ""
+        display_name = cf_first_name or ""
+        display_last_name = cf_last_name or ""
+        
+        # Use the display name fields from FreshService if available
+        fs_display_name = onboarding_fields.get("cf_display_name", "").strip()
+        if fs_display_name:
+            # If FreshService provides a full display name, try to split it
+            parts = fs_display_name.split()
+            if len(parts) >= 2:
+                display_name = parts[0]
+                display_last_name = " ".join(parts[1:])
+            elif len(parts) == 1:
+                display_name = parts[0]
 
         # company can be list (msf_company: ['Americor'])
         company_raw = onboarding_fields.get("msf_company")
@@ -193,7 +213,7 @@ class FreshserviceOnboardingSync(BaseUserScript):
         company_l = str(company).lower()
 
         # username and company email
-        username = f"{first.lower()}.{last.lower()}" if first and last else ""
+        username = f"{display_name.lower()}.{display_last_name.lower()}" if display_name and display_last_name else ""
         domain = {"credit9": "credit9.com", "americor": "americor.com"}.get(company_l, "americor.com")
         company_email = f"{username}@{domain}" if username else ""
 
@@ -216,9 +236,9 @@ class FreshserviceOnboardingSync(BaseUserScript):
         user_data = {
             "freshservice_ticket_id": str(fallback_ticket_id or onboarding_fields.get("ticket_id") or ""),
             "username": username,
-            "first_name": first,
-            "last_name": last,
+            "legal_name": legal_name,
             "display_name": display_name,
+            "display_last_name": display_last_name,
             "company_email": company_email,
             "personal_email": onboarding_fields.get("cf_email", ""),
 
@@ -257,7 +277,7 @@ class FreshserviceOnboardingSync(BaseUserScript):
         warnings = []
         
         # Required fields
-        required_fields = ["first_name", "last_name", "company_email"]
+        required_fields = ["display_name", "display_last_name", "company_email"]
         for field in required_fields:
             if not user_data.get(field):
                 errors.append(f"Missing required field: {field}")
@@ -316,12 +336,12 @@ class FreshserviceOnboardingSync(BaseUserScript):
 
             insert_query = text("""
                 INSERT INTO onboarding (
-                    username, first_name, last_name, display_name, company_email, personal_email, title, 
+                    username, legal_name, display_name, display_last_name, company_email, personal_email, title, 
                     department, manager, start_date, phone_number, company, status, notes, 
                     ticket_number, location_first_day, address_type, street_name, city, state, zip_code,
                     password, created_by, created_at, updated_at
                 ) VALUES (
-                    :username, :first_name, :last_name, :display_name, :company_email, :personal_email, :title,
+                    :username, :legal_name, :display_name, :display_last_name, :company_email, :personal_email, :title,
                     :department, :manager, :start_date, :phone_number, :company, :status, :notes,
                     :ticket_number, :location_first_day, :address_type, :street_name, :city, :state, :zip_code,
                     :password, :created_by, NOW(), NOW()
@@ -330,9 +350,9 @@ class FreshserviceOnboardingSync(BaseUserScript):
 
             session.execute(insert_query, {
                 "username": user_data["username"],
-                "first_name": user_data["first_name"],
-                "last_name": user_data["last_name"],
+                "legal_name": user_data["legal_name"],
                 "display_name": user_data["display_name"],
+                "display_last_name": user_data["display_last_name"],
                 "company_email": user_data["company_email"],
                 "personal_email": user_data["personal_email"],
                 "title": user_data["title"],

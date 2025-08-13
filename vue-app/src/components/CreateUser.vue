@@ -23,23 +23,22 @@
                      placeholder="e.g., Americor">
             </div>
             
-            <!-- First Name -->
+            <!-- Legal Name -->
             <div class="form-group">
-              <label for="firstName">First Name *</label>
-              <input type="text" id="firstName" v-model="user.firstName" required>
-            </div>
-            
-            <!-- Last Name -->
-            <div class="form-group">
-              <label for="lastName">Last Name *</label>
-              <input type="text" id="lastName" v-model="user.lastName" required>
+              <label for="legalName">Legal Name *</label>
+              <input type="text" id="legalName" v-model="user.legalName" required>
             </div>
             
             <!-- Display Name -->
             <div class="form-group">
-              <label for="displayName">Display Name</label>
-              <input type="text" id="displayName" v-model="user.displayName" 
-                     placeholder="e.g., John Smith">
+              <label for="displayName">Display Name *</label>
+              <input type="text" id="displayName" v-model="user.displayName" required>
+            </div>
+            
+            <!-- Display Last Name -->
+            <div class="form-group">
+              <label for="displayLastName">Display Last Name *</label>
+              <input type="text" id="displayLastName" v-model="user.displayLastName" required>
             </div>
             
             <!-- Personal Email -->
@@ -112,8 +111,13 @@
             <!-- Password -->
             <div class="form-group">
               <label for="password">Password</label>
-              <input type="text" id="password" v-model="user.password" 
-                     placeholder="Auto-generated 16-character password" readonly class="readonly-field">
+              <div class="password-field-container">
+                <input type="text" id="password" v-model="user.password" 
+                       placeholder="Auto-generated 16-character password" readonly class="readonly-field">
+                <button type="button" class="btn-outline btn-small" @click="renewPassword">
+                  <i class="fa-solid fa-refresh"></i> 
+                </button>
+              </div>
             </div>
             
             <!-- Department OU -->
@@ -275,9 +279,9 @@ export default {
       handler(newUser) {
         if (!newUser) return
         
-        // Auto-generate username when first/last name changes
-        if (newUser.firstName && newUser.lastName) {
-          newUser.username = `${newUser.firstName.toLowerCase()}.${newUser.lastName.toLowerCase()}`
+        // Auto-generate username when display name/last name changes
+        if (newUser.displayName && newUser.displayLastName) {
+          newUser.username = `${newUser.displayName.toLowerCase()}.${newUser.displayLastName.toLowerCase()}`
           
           // Auto-generate company email using the username
           newUser.companyEmail = `${newUser.username}@americor.com`
@@ -306,11 +310,10 @@ export default {
   methods: {
     createEmptyUser() {
       const user = {
-        status: 'Pending',
         company: 'Americor',
-        firstName: '',
-        lastName: '',
+        legalName: '',
         displayName: '',
+        displayLastName: '',
         personalEmail: '',
         companyEmail: '',
         phoneNumber: '',
@@ -347,8 +350,8 @@ export default {
       
       try {
         // Auto-generate missing fields
-        if (!this.user.username && this.user.firstName && this.user.lastName) {
-          this.user.username = `${this.user.firstName.toLowerCase()}.${this.user.lastName.toLowerCase()}`
+        if (!this.user.username && this.user.displayName && this.user.displayLastName) {
+          this.user.username = `${this.user.displayName.toLowerCase()}.${this.user.displayLastName.toLowerCase()}`
         }
         if (!this.user.companyEmail && this.user.username) {
           this.user.companyEmail = `${this.user.username}@americor.com`
@@ -388,8 +391,9 @@ export default {
         
         // Validate required fields before submission
         const requiredFields = [
-          { field: 'firstName', label: 'First Name' },
-          { field: 'lastName', label: 'Last Name' },
+          { field: 'legalName', label: 'Legal Name' },
+          { field: 'displayName', label: 'Display Name' },
+          { field: 'displayLastName', label: 'Display Last Name' },
           { field: 'personalEmail', label: 'Personal Email' },
           { field: 'title', label: 'Title' },
           { field: 'managerEmail', label: 'Manager Email' },
@@ -416,9 +420,9 @@ export default {
         
         const onboardingData = {
           company: this.user.company,
-          first_name: this.user.firstName,
-          last_name: this.user.lastName,
+          legal_name: this.user.legalName,
           display_name: this.user.displayName,
+          display_last_name: this.user.displayLastName,
           personal_email: this.user.personalEmail,
           company_email: this.user.companyEmail,
           phone_number: this.user.phoneNumber ? String(this.user.phoneNumber) : null,
@@ -426,7 +430,6 @@ export default {
           manager: this.user.managerEmail,
           department: this.user.department,
           start_date: this.user.startDate ? new Date(this.user.startDate).toISOString() : new Date().toISOString(),
-          status: this.user.status,
           location_first_day: this.user.locationFirstDay || null,
           username: this.user.username,
           password: this.user.password,
@@ -476,12 +479,16 @@ export default {
     },
     
     generatePassword() {
-      const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*'
+      const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$+!&='
       let password = ''
       for (let i = 0; i < 16; i++) {
         password += chars.charAt(Math.floor(Math.random() * chars.length))
       }
       return password
+    },
+
+    renewPassword() {
+      this.user.password = this.generatePassword()
     },
     
     handleZoomChange() {
@@ -668,6 +675,22 @@ export default {
 .readonly-field::placeholder {
   color: #9ca3af;
   font-style: italic;
+}
+
+.password-field-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.password-field-container input {
+  flex: 1;
+}
+
+.btn-small {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  white-space: nowrap;
 }
 
 /* Checkbox styles */

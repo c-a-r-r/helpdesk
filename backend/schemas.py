@@ -5,9 +5,9 @@ from models import AddressType, OnboardingStatus, OffboardingStatus, ScriptStatu
 
 class OnboardingBase(BaseModel):
     company: str = "Americor"
-    first_name: str
-    last_name: str
-    display_name: str
+    legal_name: str  # Changed from first_name
+    display_name: str  # Changed from last_name
+    display_last_name: str  # New field
     personal_email: EmailStr
     company_email: Optional[EmailStr] = None
     phone_number: Optional[str] = None
@@ -34,24 +34,14 @@ class OnboardingBase(BaseModel):
     notes: Optional[str] = None
     extra_details: Optional[str] = None
 
-    @field_validator('display_name', mode='before')
-    @classmethod
-    def generate_display_name(cls, v, info):
-        if not v and info.data:
-            first_name = info.data.get('first_name')
-            last_name = info.data.get('last_name')
-            if first_name and last_name:
-                return f"{first_name} {last_name}"
-        return v
-
     @field_validator('username', mode='before')
     @classmethod
     def generate_username(cls, v, info):
         if not v and info.data:
-            first_name = info.data.get('first_name')
-            last_name = info.data.get('last_name')
-            if first_name and last_name:
-                return f"{first_name.lower()}.{last_name.lower()}"
+            display_name = info.data.get('display_name')
+            display_last_name = info.data.get('display_last_name')
+            if display_name and display_last_name:
+                return f"{display_name.lower()}.{display_last_name.lower()}"
         return v
 
     @model_validator(mode='before')
@@ -75,10 +65,10 @@ class OnboardingBase(BaseModel):
             if username:
                 return f"{username}@americor.com"
             
-            first_name = info.data.get('first_name')
-            last_name = info.data.get('last_name')
-            if first_name and last_name:
-                username = f"{first_name.lower()}.{last_name.lower()}"
+            display_name = info.data.get('display_name')
+            display_last_name = info.data.get('display_last_name')
+            if display_name and display_last_name:
+                username = f"{display_name.lower()}.{display_last_name.lower()}"
                 return f"{username}@americor.com"
         return v
 
@@ -90,10 +80,10 @@ class OnboardingBase(BaseModel):
             if username:
                 return f"{username}@credit9.com"
             
-            first_name = info.data.get('first_name')
-            last_name = info.data.get('last_name')
-            if first_name and last_name:
-                username = f"{first_name.lower()}.{last_name.lower()}"
+            display_name = info.data.get('display_name')
+            display_last_name = info.data.get('display_last_name')
+            if display_name and display_last_name:
+                username = f"{display_name.lower()}.{display_last_name.lower()}"
                 return f"{username}@credit9.com"
         return v
 
@@ -105,11 +95,12 @@ class OnboardingBase(BaseModel):
             if username:
                 return f"{username}@advantageteam.law"
             
-            first_name = info.data.get('first_name')
-            last_name = info.data.get('last_name')
-            if first_name and last_name:
-                username = f"{first_name.lower()}.{last_name.lower()}"
+            display_name = info.data.get('display_name')
+            display_last_name = info.data.get('display_last_name')
+            if display_name and display_last_name:
+                username = f"{display_name.lower()}.{display_last_name.lower()}"
                 return f"{username}@advantageteam.law"
+        return v
         return v
 
 class OnboardingCreate(OnboardingBase):
@@ -233,8 +224,8 @@ class ScriptLogResponse(ScriptLogBase):
 
 # Offboarding schemas
 class OffboardingBase(BaseModel):
-    first_name: str
-    last_name: str
+    first_name: str  # Keep as first_name for offboarding
+    last_name: str  # Keep as last_name for offboarding
     company_email: EmailStr
     hostname: Optional[str] = None
     requested_by: EmailStr

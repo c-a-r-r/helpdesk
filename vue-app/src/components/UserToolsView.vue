@@ -20,7 +20,7 @@
         <div class="header-content">
           <div class="header-text">
             <h1>Onboarding Tools</h1>
-            <p>Execute scripts for {{ userData?.first_name }} {{ userData?.last_name }}</p>
+            <p>Execute scripts for {{ userData?.display_name }} {{ userData?.display_last_name }}</p>
           </div>
           <button class="btn-secondary" @click="goBack">
             <i class="fa-solid fa-arrow-left"></i> Back to Onboarding
@@ -41,22 +41,22 @@
               <input type="text" :value="userData?.company || 'N/A'" readonly class="readonly-field">
             </div>
             
-            <!-- First Name -->
+            <!-- Legal Name -->
             <div class="form-group">
-              <label>First Name</label>
-              <input type="text" :value="userData?.first_name || 'N/A'" readonly class="readonly-field">
-            </div>
-            
-            <!-- Last Name -->
-            <div class="form-group">
-              <label>Last Name</label>
-              <input type="text" :value="userData?.last_name || 'N/A'" readonly class="readonly-field">
+              <label>Legal Name</label>
+              <input type="text" :value="userData?.legal_name || 'N/A'" readonly class="readonly-field">
             </div>
             
             <!-- Display Name -->
             <div class="form-group">
               <label>Display Name</label>
               <input type="text" :value="userData?.display_name || 'N/A'" readonly class="readonly-field">
+            </div>
+            
+            <!-- Display Last Name -->
+            <div class="form-group">
+              <label>Display Last Name</label>
+              <input type="text" :value="userData?.display_last_name || 'N/A'" readonly class="readonly-field">
             </div>
             
             <!-- Company Email -->

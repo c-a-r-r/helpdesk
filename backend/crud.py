@@ -50,8 +50,9 @@ class OnboardingCRUD:
     @staticmethod
     def search(db: Session, query: str, skip: int = 0, limit: int = 100) -> List[Onboarding]:
         search_filter = or_(
-            Onboarding.first_name.ilike(f"%{query}%"),
-            Onboarding.last_name.ilike(f"%{query}%"),
+            Onboarding.legal_name.ilike(f"%{query}%"),
+            Onboarding.display_name.ilike(f"%{query}%"),
+            Onboarding.display_last_name.ilike(f"%{query}%"),
             Onboarding.personal_email.ilike(f"%{query}%"),
             Onboarding.company_email.ilike(f"%{query}%"),
             Onboarding.department.ilike(f"%{query}%"),
@@ -67,8 +68,9 @@ class OnboardingCRUD:
         
         # Store old values for audit
         old_values = {
-            "first_name": db_onboarding.first_name,
-            "last_name": db_onboarding.last_name,
+            "legal_name": db_onboarding.legal_name,
+            "display_name": db_onboarding.display_name,
+            "display_last_name": db_onboarding.display_last_name,
             "personal_email": db_onboarding.personal_email,
             "company_email": db_onboarding.company_email,
             "department": db_onboarding.department,
@@ -99,8 +101,9 @@ class OnboardingCRUD:
         
         # Store values for audit
         old_values = {
-            "first_name": db_onboarding.first_name,
-            "last_name": db_onboarding.last_name,
+            "legal_name": db_onboarding.legal_name,
+            "display_name": db_onboarding.display_name,
+            "display_last_name": db_onboarding.display_last_name,
             "personal_email": db_onboarding.personal_email,
             "company_email": db_onboarding.company_email
         }

@@ -186,7 +186,7 @@ class CreateGoogleWorkspaceUser(BaseUserScript):
     
     def validate_user_data(self) -> bool:
         """Validate required fields for Google Workspace user creation"""
-        required_fields = ['first_name', 'last_name', 'company_email', 'username']
+        required_fields = ['display_name', 'display_last_name', 'company_email', 'username']
         
         for field in required_fields:
             if not self.user_data.get(field):
@@ -258,8 +258,8 @@ class CreateGoogleWorkspaceUser(BaseUserScript):
             google_user = {
                 "primaryEmail": email,
                 "name": {
-                    "givenName": self.user_data['first_name'],
-                    "familyName": self.user_data['last_name']
+                    "givenName": self.user_data['display_name'],
+                    "familyName": self.user_data['display_last_name']
                 },
                 "password": password,
                 "orgUnitPath": self.get_org_unit_path(),
@@ -302,8 +302,8 @@ class CreateGoogleWorkspaceUser(BaseUserScript):
                 "department": self.user_data.get('department', ''),
                 "title": self.user_data.get('title', ''),
                 "manager": self.user_data.get('manager', ''),
-                "firstname": self.user_data['first_name'],
-                "lastname": self.user_data['last_name']
+                "firstname": self.user_data['display_name'],
+                "lastname": self.user_data['display_last_name']
             }
             
         except HttpError as e:
