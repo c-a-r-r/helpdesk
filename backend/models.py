@@ -115,6 +115,11 @@ class Offboarding(Base):
     status = Column(Enum(OffboardingStatus), default=OffboardingStatus.PENDING)
     notes = Column(Text, nullable=True)
     
+    # Script Status Tracking
+    jumpcloud_status = Column(String(50), nullable=True, default=None)  # e.g., "USER TERMINATED", "USER NOT FOUND", "TERMINATION FAILED"
+    google_status = Column(String(50), nullable=True, default=None)     # e.g., "USER TERMINATED", "USER NOT FOUND", "TERMINATION FAILED"  
+    automox_status = Column(String(50), nullable=True, default=None)    # e.g., "AGENT REMOVED", "AGENT NOT FOUND", "REMOVAL FAILED"
+    
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -158,61 +158,127 @@
           <div class="section-title">
             <h2>Available Scripts</h2>
           </div>
-          <div class="scripts-grid">
-            <!-- JumpCloud Scripts -->
-            <div class="script-group">
-              <h3>🔗 JumpCloud Operations</h3>
-              <div class="script-list">
-                <button 
-                  @click="executeScript('jumpcloud', 'create_user')"
-                  class="script-btn jumpcloud"
-                  :disabled="isExecuting"
-                >
-                  <span class="btn-icon">👤</span>
-                  <span class="btn-text">Create User</span>
-                </button>
-                
-                <button 
-                  @click="executeScript('jumpcloud', 'bind_machine')"
-                  class="script-btn jumpcloud"
-                  :disabled="isExecuting"
-                >
-                  <span class="btn-icon">💻</span>
-                  <span class="btn-text">Bind Machine</span>
-                </button>
+          <div class="scripts-section">
+            <div class="scripts-horizontal-layout">
+              <!-- JumpCloud Operations Table -->
+              <div class="script-group">
+                <div class="scripts-table">
+                  <table class="script-operations-table">
+                    <thead>
+                      <tr>
+                        <th class="title-header">
+                          <i class="fa-solid fa-user"></i> JumpCloud
+                        </th>
+                        <th class="status-header">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>
+                          <button 
+                            @click="executeScript('jumpcloud', 'create_user')"
+                            class="btn-primary"
+                            :disabled="isExecuting"
+                          >
+                            <span class="btn-icon"><i class="fa-solid fa-user-plus"></i></span>
+                            <span class="btn-text">Create User</span>
+                          </button>
+                        </td>
+                        <td>
+                          <span :class="getIndividualScriptStatusClass('jumpcloud', 'create_user')" class="status-badge">
+                            {{ getIndividualScriptStatusText('jumpcloud', 'create_user') }}
+                          </span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <button 
+                            @click="executeScript('jumpcloud', 'bind_machine')"
+                            class="btn-primary"
+                            :disabled="isExecuting"
+                          >
+                            <span class="btn-icon"><i class="fa-solid fa-desktop"></i></span>
+                            <span class="btn-text">Bind Machine</span>
+                          </button>
+                        </td>
+                        <td>
+                          <span :class="getIndividualScriptStatusClass('jumpcloud', 'bind_machine')" class="status-badge">
+                            {{ getIndividualScriptStatusText('jumpcloud', 'bind_machine') }}
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
 
-            <!-- Google Workspace Scripts -->
-            <div class="script-group">
-              <h3>🔵 Google Workspace Operations</h3>
-              <div class="script-list">
-                <button 
-                  @click="executeScript('google', 'create_user')"
-                  class="script-btn google"
-                  :disabled="isExecuting"
-                >
-                  <span class="btn-icon">👤</span>
-                  <span class="btn-text">Create User</span>
-                </button>
-                
-                <button 
-                  @click="executeScript('google', 'add_aliases')"
-                  class="script-btn google"
-                  :disabled="isExecuting"
-                >
-                  <span class="btn-icon">📧</span>
-                  <span class="btn-text">Add Aliases</span>
-                </button>
-                
-                <button 
-                  @click="executeScript('google', 'force_password_change')"
-                  class="script-btn google"
-                  :disabled="isExecuting"
-                >
-                  <span class="btn-icon">🔐</span>
-                  <span class="btn-text">Force Password Change</span>
-                </button>
+              <!-- Google Workspace Operations Table -->
+              <div class="script-group">
+                <div class="scripts-table">
+                  <table class="script-operations-table">
+                    <thead>
+                      <tr>
+                        <th class="title-header">
+                          <i class="fa-brands fa-google"></i> Google Workspace
+                        </th>
+                        <th class="status-header">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>
+                          <button 
+                            @click="executeScript('google', 'create_user')"
+                            class="btn-primary"
+                            :disabled="isExecuting"
+                          >
+                            <span class="btn-icon"><i class="fa-solid fa-user-plus"></i></span>
+                            <span class="btn-text">Create User</span>
+                          </button>
+                        </td>
+                        <td>
+                          <span :class="getIndividualScriptStatusClass('google', 'create_user')" class="status-badge">
+                            {{ getIndividualScriptStatusText('google', 'create_user') }}
+                          </span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <button 
+                            @click="executeScript('google', 'add_aliases')"
+                            class="btn-primary"
+                            :disabled="isExecuting"
+                          >
+                            <span class="btn-icon"><i class="fa-solid fa-users"></i></span>
+                            <span class="btn-text">Add Aliases</span>
+                          </button>
+                        </td>
+                        <td>
+                          <span :class="getIndividualScriptStatusClass('google', 'add_aliases')" class="status-badge">
+                            {{ getIndividualScriptStatusText('google', 'add_aliases') }}
+                          </span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <button 
+                            @click="executeScript('google', 'force_password_change')"
+                            class="btn-primary"
+                            :disabled="isExecuting"
+                          >
+                            <span class="btn-icon"><i class="fa-solid fa-lock"></i></span>
+                            <span class="btn-text">Force Password Change</span>
+                          </button>
+                        </td>
+                        <td>
+                          <span :class="getIndividualScriptStatusClass('google', 'force_password_change')" class="status-badge">
+                            {{ getIndividualScriptStatusText('google', 'force_password_change') }}
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -606,6 +672,55 @@ export default {
 
     goBack() {
       this.$router.push({ name: 'onboarding' })
+    },
+
+    // Status badge methods
+    getScriptStatusClass(scriptType) {
+      const lastResult = this.getLastExecutionResult(scriptType)
+      if (!lastResult) return 'status-not-run'
+      
+      if (lastResult.success) return 'status-success'
+      return 'status-failed'
+    },
+
+    getScriptStatusText(scriptType) {
+      const lastResult = this.getLastExecutionResult(scriptType)
+      if (!lastResult) return 'Not Run Yet'
+      
+      if (lastResult.success) return 'Success'
+      return 'Failed'
+    },
+
+    getIndividualScriptStatusClass(scriptType, scriptName) {
+      const lastResult = this.getLastExecutionResult(scriptType, scriptName)
+      if (!lastResult) return 'status-not-run'
+      
+      if (lastResult.success) return 'status-success'
+      return 'status-failed'
+    },
+
+    getIndividualScriptStatusText(scriptType, scriptName) {
+      const lastResult = this.getLastExecutionResult(scriptType, scriptName)
+      if (!lastResult) return 'Not Run Yet'
+      
+      if (lastResult.success) return 'Success'
+      return 'Failed'
+    },
+
+    getLastExecutionResult(scriptType, scriptName = null) {
+      if (!this.executionResults || this.executionResults.length === 0) return null
+      
+      // Filter by script type and optionally by script name
+      const filtered = this.executionResults.filter(result => {
+        const matchesType = result.script_type === scriptType
+        const matchesName = scriptName ? result.script_name === scriptName : true
+        return matchesType && matchesName
+      })
+      
+      if (filtered.length === 0) return null
+      
+      // Return the most recent result (assuming they're ordered by date)
+      return filtered[filtered.length - 1]
     }
   }
 }
@@ -944,48 +1059,220 @@ export default {
 }
 
 /* Button Styles */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #f8fafc 0%, #c6b9cb 100%);
+  color: #475569;
+  border: 1px solid #c3cad2;
+  padding: 8px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  height: 40px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary:hover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+  border-color: #8e99a5;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Scripts Section Styles */
+.scripts-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.scripts-horizontal-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.script-group {
+  background: transparent;
+  border-radius: 12px;
+  overflow: hidden;
+  border: none;
+  box-shadow: none;
+}
+
+/* Table Styles */
+.scripts-table {
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid #d1d5db;
+}
+
+.script-operations-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.script-operations-table th {
+  background: #e2e8f0 !important;
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #d1d5db;
+  border-right: 1px solid #d1d5db;
+  font-size: 0.9rem;
+}
+
+.script-operations-table th:first-child {
+  border-top-left-radius: 10px;
+}
+
+.script-operations-table th:last-child {
+  border-top-right-radius: 10px;
+  border-right: none;
+}
+
+.script-operations-table th.title-header {
+  width: 60%;
+  font-size: 1.1rem;
+  color: #1f2937;
+  background: #e2e8f0 !important;
+}
+
+.script-operations-table th.title-header i {
+  margin-right: 8px;
+}
+
+.script-operations-table th.status-header {
+  width: 40%;
+  text-align: center;
+  background: #e2e8f0 !important;
+}
+
+.script-operations-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+  vertical-align: middle;
+  background: white;
+}
+
+.script-operations-table td:last-child {
+  text-align: center;
+  border-right: none;
+}
+
+.script-operations-table tbody tr:hover td {
+  background: #f9fafb;
+}
+
+.script-operations-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.script-operations-table tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 10px;
+}
+
+.script-operations-table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 10px;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-not-run {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.status-success {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #166534;
+  border: 1px solid #22c55e;
+}
+
+.status-failed {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  color: #dc2626;
+  border: 1px solid #ef4444;
+}
+
+.status-running {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1d4ed8;
+  border: 1px solid #3b82f6;
+}
+
+/* Pill Button Styles */
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #26adec 0%, #764ba2 100%);
   color: white;
   border: none;
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: 20px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 500;
+  text-align: center;
   font-size: 0.85rem;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+  height: 40px;
+  width: 200px;
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
   background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
 }
 
-.btn-secondary {
-  background: #f8fafc;
-  color: #475569;
-  border: 1px solid #e2e8f0;
-  padding: 8px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 0.85rem;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.btn-secondary:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.btn-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.btn-text {
+  font-weight: 500;
+  color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .scripts-horizontal-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 
 /* Loading States */

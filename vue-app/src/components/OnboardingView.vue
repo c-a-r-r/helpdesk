@@ -1364,33 +1364,37 @@ export default {
 
 /* Button Styles */
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #26adec 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 30px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 500;
+  text-align: center;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   text-decoration: none;
+  white-space: nowrap;
+  height: 40px;
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  background: linear-gradient(135deg, #5a67d8 0%, #190f2f 100%);
 }
 
 .btn-primary:disabled {
-  background: #d1d5db;
+  opacity: 0.6;
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .btn-secondary {

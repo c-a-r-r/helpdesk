@@ -858,7 +858,7 @@ export default {
 
 /* Bulk Actions Section */
 .bulk-actions-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg,  #0094ef 0%, #454a62 100%);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;

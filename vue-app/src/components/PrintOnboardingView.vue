@@ -46,7 +46,14 @@
                 <div class="user-name">{{ user.firstName }} {{ user.lastName }}</div>
                 <div class="user-details">{{ user.companyEmail }} • {{ user.department }}</div>
               </div>
-              <div class="user-status" :class="user.status.toLowerCase()">{{ user.status }}</div>
+              <div class="script-statuses">
+                <span class="script-status" :class="getScriptStatusClass(user.jumpcloudStatus)">
+                  JC: {{ getScriptStatusText(user.jumpcloudStatus) }}
+                </span>
+                <span class="script-status" :class="getScriptStatusClass(user.googleStatus)">
+                  Google: {{ getScriptStatusText(user.googleStatus) }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -258,14 +265,15 @@ export default {
           username: user.username || '',
           password: user.password || '',
           startDate: user.start_date ? new Date(user.start_date) : null,
-          status: user.status || 'pending',
           company: user.company || '',
           manager: user.manager || '',
           phoneNumber: user.phone_number || '',
           ticketNumber: user.ticket_number || '',
           zoom: user.zoom || false,
           five9: user.five9 || false,
-          extension: user.extension || null
+          extension: user.extension || null,
+          jumpcloudStatus: user.jumpcloud_status || null,
+          googleStatus: user.google_status || null
         })).sort((a, b) => b.id - a.id) // Sort by ID descending (newest first)
         this.filteredUsers = this.users
       } catch (error) {
@@ -324,6 +332,39 @@ export default {
           element.style.display = originalDisplay
         })
       }, 1000)
+    },
+    getScriptStatusText(status) {
+      if (!status || status === null) {
+        return 'NOT RUN'
+      }
+      return status
+    },
+    getScriptStatusClass(status) {
+      if (!status || status === null) {
+        return 'script-status-not-run'
+      }
+      
+      const statusLower = status.toLowerCase()
+      
+      // Success statuses
+      if (statusLower.includes('created') || statusLower.includes('success') || 
+          statusLower.includes('completed') || statusLower.includes('activated')) {
+        return 'script-status-success'
+      }
+      
+      // Warning/Info statuses
+      if (statusLower.includes('already exists') || statusLower.includes('warning') || 
+          statusLower.includes('skipped') || statusLower.includes('unknown')) {
+        return 'script-status-warning'
+      }
+      
+      // Failed statuses
+      if (statusLower.includes('failed') || statusLower.includes('error')) {
+        return 'script-status-failed'
+      }
+      
+      // Default for any other status
+      return 'script-status-info'
     },
     formatDate(date) {
       if (!date) return 'N/A'
@@ -421,6 +462,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 16px;
+  background: rgba(46, 1, 46, 0.039);
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   margin-bottom: 8px;
@@ -449,22 +491,45 @@ export default {
   font-size: 0.9rem;
 }
 
-.user-status {
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 0.8rem;
+.script-statuses {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.script-status {
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 0.7rem;
   font-weight: 500;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.user-status.active {
-  background: #f0fdf4;
-  color: #16a34a;
+.script-status-not-run {
+  background: #f3f4f6;
+  color: #6b7280;
 }
 
-.user-status.pending {
+.script-status-success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.script-status-warning {
   background: #fef3c7;
-  color: #d97706;
+  color: #92400e;
+}
+
+.script-status-failed {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.script-status-info {
+  background: #dbeafe;
+  color: #1e40af;
 }
 
 .loading-state,

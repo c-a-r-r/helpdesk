@@ -1212,28 +1212,126 @@ async def execute_offboarding_script(
             script_status = ScriptStatus.FAILED  # default
             output_data = result.get("output", "")
             
+            # Determine the script status for logging
+            script_execution_status = None
             if result.get("success", False):
                 # Check if there's a nested result with more specific status
                 nested_result = result.get("result", {})
-                if isinstance(nested_result, dict) and "status" in nested_result:
-                    nested_status = nested_result["status"].lower()
-                    if nested_status == "success":
-                        script_status = ScriptStatus.SUCCESS
-                    elif nested_status == "warning":
-                        # Store as SUCCESS but preserve the warning info in output
-                        script_status = ScriptStatus.SUCCESS
-                        # Add a marker to the output so frontend can detect warnings
-                        if isinstance(result.get("output"), str) and '{"success": true, "result":' in result.get("output", ""):
-                            # Output already contains the JSON with warning status
-                            pass
+                if isinstance(nested_result, dict):
+                    # First check for status field
+                    if "status" in nested_result:
+                        nested_status = nested_result["status"].lower()
+                        if nested_status == "success":
+                            script_status = ScriptStatus.SUCCESS
+                            # Use message if available, otherwise use default success messages
+                            if "message" in nested_result:
+                                script_execution_status = nested_result["message"]
+                            else:
+                                # Map to user-friendly status for database storage
+                                if request.script_type.lower() == "automox":
+                                    script_execution_status = "AGENT REMOVED"
+                                elif request.script_type.lower() == "jumpcloud":
+                                    script_execution_status = "USER TERMINATED"
+                                elif request.script_type.lower() in ["google", "offboarding"]:
+                                    script_execution_status = "USER TERMINATED"
+                        elif nested_status == "warning":
+                            # Store as SUCCESS but preserve the warning info in output
+                            script_status = ScriptStatus.SUCCESS
+                            # Use message if available, otherwise use default warning messages
+                            if "message" in nested_result:
+                                script_execution_status = nested_result["message"]
+                            else:
+                                # Map to user-friendly warning status
+                                if request.script_type.lower() == "automox":
+                                    script_execution_status = "AGENT NOT FOUND"
+                                elif request.script_type.lower() == "jumpcloud":
+                                    script_execution_status = "USER NOT FOUND"
+                                elif request.script_type.lower() in ["google", "offboarding"]:
+                                    script_execution_status = "USER NOT FOUND"
+                            # Add a marker to the output so frontend can detect warnings
+                            if isinstance(result.get("output"), str) and '{"success": true, "result":' in result.get("output", ""):
+                                # Output already contains the JSON with warning status
+                                pass
+                            else:
+                                # Ensure the output contains the warning marker
+                                output_data = f"WARNING_STATUS: {output_data}"
+                        elif nested_status == "failed":
+                            script_status = ScriptStatus.FAILED
+                            # Use message if available, otherwise use default failure messages
+                            if "message" in nested_result:
+                                script_execution_status = nested_result["message"]
+                            else:
+                                # Map to user-friendly failure status
+                                if request.script_type.lower() == "automox":
+                                    script_execution_status = "REMOVAL FAILED"
+                                elif request.script_type.lower() == "jumpcloud":
+                                    script_execution_status = "TERMINATION FAILED"
+                                elif request.script_type.lower() in ["google", "offboarding"]:
+                                    script_execution_status = "TERMINATION FAILED"
+                    elif "message" in nested_result:
+                        # Use the actual message from the script result
+                        script_execution_status = nested_result["message"]
+                        # Determine success/failure based on the message content
+                        message_lower = nested_result["message"].lower()
+                        if "failed" in message_lower or "error" in message_lower:
+                            script_status = ScriptStatus.FAILED
+                        elif "not found" in message_lower or "unknown" in message_lower:
+                            script_status = ScriptStatus.SUCCESS  # These are valid responses, not failures
                         else:
-                            # Ensure the output contains the warning marker
-                            output_data = f"WARNING_STATUS: {output_data}"
-                    elif nested_status == "failed":
-                        script_status = ScriptStatus.FAILED
+                            script_status = ScriptStatus.SUCCESS
                 else:
                     # No nested result, use top-level success
                     script_status = ScriptStatus.SUCCESS
+                    if request.script_type.lower() == "automox":
+                        script_execution_status = "AGENT REMOVED"
+                    elif request.script_type.lower() == "jumpcloud":
+                        script_execution_status = "USER TERMINATED"
+                    elif request.script_type.lower() in ["google", "offboarding"]:
+                        script_execution_status = "USER TERMINATED"
+            else:
+                # Failed execution
+                if request.script_type.lower() == "automox":
+                    script_execution_status = "REMOVAL FAILED"
+                elif request.script_type.lower() == "jumpcloud":
+                    script_execution_status = "TERMINATION FAILED"
+                elif request.script_type.lower() in ["google", "offboarding"]:
+                    script_execution_status = "TERMINATION FAILED"
+            
+            # Update the script status in the offboarding record
+            if script_execution_status:
+                update_data = {}
+                if request.script_type.lower() == "automox":
+                    update_data["automox_status"] = script_execution_status
+                elif request.script_type.lower() == "jumpcloud":
+                    update_data["jumpcloud_status"] = script_execution_status
+                elif request.script_type.lower() in ["google", "offboarding"]:
+                    update_data["google_status"] = script_execution_status
+                
+                if update_data:
+                    offboarding_update = OffboardingUpdate(**update_data)
+                    OffboardingCRUD.update(db, offboarding_id, offboarding_update, offboarding_data.company_email)
+            
+            # If no specific status was set, check the script log status and use a default message
+            if not script_execution_status:
+                # Fallback: use the script log status to determine a basic status message
+                if script_status == ScriptStatus.SUCCESS:
+                    fallback_status = "COMPLETED"
+                elif script_status == ScriptStatus.FAILED:
+                    fallback_status = "FAILED"
+                else:
+                    fallback_status = "UNKNOWN"
+                
+                update_data = {}
+                if request.script_type.lower() == "automox":
+                    update_data["automox_status"] = fallback_status
+                elif request.script_type.lower() == "jumpcloud":
+                    update_data["jumpcloud_status"] = fallback_status
+                elif request.script_type.lower() in ["google", "offboarding"]:
+                    update_data["google_status"] = fallback_status
+                
+                if update_data:
+                    offboarding_update = OffboardingUpdate(**update_data)
+                    OffboardingCRUD.update(db, offboarding_id, offboarding_update, offboarding_data.company_email)
             
             OffboardingScriptLogCRUD.update_completion(
                 db, 

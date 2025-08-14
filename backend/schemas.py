@@ -249,6 +249,9 @@ class OffboardingUpdate(BaseModel):
     password: Optional[str] = None
     status: Optional[OffboardingStatus] = None
     notes: Optional[str] = None
+    jumpcloud_status: Optional[str] = None
+    google_status: Optional[str] = None
+    automox_status: Optional[str] = None
 
 class OffboardingResponse(OffboardingBase):
     id: int
@@ -256,6 +259,9 @@ class OffboardingResponse(OffboardingBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    jumpcloud_status: Optional[str] = None
+    google_status: Optional[str] = None
+    automox_status: Optional[str] = None
 
     class Config:
         from_attributes = True

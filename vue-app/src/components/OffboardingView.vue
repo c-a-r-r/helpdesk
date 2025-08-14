@@ -27,13 +27,12 @@
             <span>records</span>
           </div>
           <div class="status-filter">
-            <label for="statusFilter">Status:</label>
+            <label for="statusFilter">Filter:</label>
             <select id="statusFilter" v-model="statusFilter" class="status-select">
-              <option value="">All</option>
-              <option value="Pending">Pending</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-              <option value="Failed">Failed</option>
+              <option value="">All Records</option>
+              <option value="has_jumpcloud">Has JumpCloud Status</option>
+              <option value="has_google">Has Google Status</option>
+              <option value="has_automox">Has Automox Status</option>
             </select>
           </div>
           <input 
@@ -99,14 +98,10 @@
               <th>Company Email</th>
               <th>Hostname</th>
               <th>Requested By</th>
-              <th>Password</th>
               <th>Created By</th>
-              <th class="sortable" @click="sortByStatus">
-                Status 
-                <i class="fa-solid fa-sort" v-if="!statusSortOrder"></i>
-                <i class="fa-solid fa-sort-up" v-if="statusSortOrder === 'asc'"></i>
-                <i class="fa-solid fa-sort-down" v-if="statusSortOrder === 'desc'"></i>
-              </th>
+              <th>JumpCloud Status</th>
+              <th>Google Status</th>
+              <th>Automox Status</th>
               <th>Date Created</th>
               <th v-if="canEdit || canDelete" class="action-column">Actions</th>
             </tr>
@@ -117,11 +112,6 @@
               <td>{{ user.company_email }}</td>
               <td>{{ user.hostname || 'N/A' }}</td>
               <td>{{ user.requested_by }}</td>
-              <td>
-                <span class="password-display" :title="user.password">
-                  {{ user.password ? '••••••••••••••••' : 'N/A' }}
-                </span>
-              </td>
               <td>
                 <span v-if="user.created_by === 'freshdesk-sync'" class="sync-indicator">
                   <i class="fa-solid fa-sync"></i> Freshdesk Sync
@@ -134,8 +124,18 @@
                 </span>
               </td>
               <td>
-                <span :class="getStatusClass(user.status)">
-                  {{ user.status || 'Pending' }}
+                <span :class="getScriptStatusClass(user.jumpcloud_status)">
+                  {{ getScriptStatusText(user.jumpcloud_status) }}
+                </span>
+              </td>
+              <td>
+                <span :class="getScriptStatusClass(user.google_status)">
+                  {{ getScriptStatusText(user.google_status) }}
+                </span>
+              </td>
+              <td>
+                <span :class="getScriptStatusClass(user.automox_status)">
+                  {{ getScriptStatusText(user.automox_status) }}
                 </span>
               </td>
               <td>{{ formatDate(user.created_at) }}</td>
@@ -189,8 +189,7 @@ export default {
       searchQuery: '',
       statusFilter: '',
       recordsPerPage: '25',
-      currentPage: 1,
-      statusSortOrder: null
+      currentPage: 1
     }
   },
   computed: {
@@ -221,18 +220,16 @@ export default {
 
       // Apply status filter
       if (this.statusFilter) {
-        filtered = filtered.filter(user => user.status === this.statusFilter)
-      }
-
-      // Apply status sorting
-      if (this.statusSortOrder) {
-        filtered.sort((a, b) => {
-          const statusA = a.status || 'Pending'
-          const statusB = b.status || 'Pending'
-          if (this.statusSortOrder === 'asc') {
-            return statusA.localeCompare(statusB)
-          } else {
-            return statusB.localeCompare(statusA)
+        filtered = filtered.filter(user => {
+          switch (this.statusFilter) {
+            case 'has_jumpcloud':
+              return user.jumpcloud_status && user.jumpcloud_status !== 'NOT RUN YET'
+            case 'has_google':
+              return user.google_status && user.google_status !== 'NOT RUN YET'
+            case 'has_automox':
+              return user.automox_status && user.automox_status !== 'NOT RUN YET'
+            default:
+              return true
           }
         })
       }
@@ -281,18 +278,11 @@ export default {
       }
     },
     sortByStatus() {
-      if (this.statusSortOrder === null) {
-        this.statusSortOrder = 'asc'
-      } else if (this.statusSortOrder === 'asc') {
-        this.statusSortOrder = 'desc'
-      } else {
-        this.statusSortOrder = null
-      }
+      // Remove this method since we no longer have status sorting
     },
     clearFilters() {
       this.searchQuery = ''
       this.statusFilter = ''
-      this.statusSortOrder = null
       this.currentPage = 1
     },
     previousPage() {
@@ -347,14 +337,38 @@ export default {
         params: { userId: user.id }
       })
     },
-    getStatusClass(status) {
-      const statusMap = {
-        'Pending': 'status-pending',
-        'In Progress': 'status-in-progress',
-        'Completed': 'status-completed',
-        'Failed': 'status-failed'
+    getScriptStatusText(status) {
+      if (!status || status === null) {
+        return 'NOT RUN YET'
       }
-      return statusMap[status] || 'status-pending'
+      return status
+    },
+    getScriptStatusClass(status) {
+      if (!status || status === null) {
+        return 'script-status-not-run'
+      }
+      
+      const statusLower = status.toLowerCase()
+      
+      // Success statuses
+      if (statusLower.includes('terminated') || statusLower.includes('removed') || 
+          statusLower.includes('completed') || statusLower.includes('success')) {
+        return 'script-status-success'
+      }
+      
+      // Warning/Info statuses
+      if (statusLower.includes('not found') || statusLower.includes('unknown') || 
+          statusLower.includes('warning')) {
+        return 'script-status-warning'
+      }
+      
+      // Failed statuses
+      if (statusLower.includes('failed') || statusLower.includes('error')) {
+        return 'script-status-failed'
+      }
+      
+      // Default for any other status
+      return 'script-status-info'
     },
     formatDate(dateString) {
       if (!dateString) return 'N/A'
@@ -670,6 +684,54 @@ export default {
   box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
 }
 
+/* Script Status badges */
+.script-status-not-run {
+  background: #f3f4f6;
+  color: #6b7280;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.script-status-success {
+  background: #dcfce7;
+  color: #166534;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.script-status-warning {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.script-status-failed {
+  background: #fee2e2;
+  color: #dc2626;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.script-status-info {
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
 /* Status badges */
 .status-pending {
   background: #fef3c7;
@@ -708,26 +770,30 @@ export default {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #26adec 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 500;
+  text-align: center;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   text-decoration: none;
+  white-space: nowrap;
+  height: 40px;
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  background: linear-gradient(135deg, #5a67d8 0%, #190f2f 100%);
 }
 
 .btn-secondary {
@@ -789,18 +855,6 @@ export default {
   .data-table td {
     padding: 8px 6px;
   }
-}
-
-/* Password display styles */
-.password-display {
-  font-family: monospace;
-  font-size: 0.9rem;
-  color: #6b7280;
-  cursor: help;
-}
-
-.password-display:hover {
-  color: #374151;
 }
 
 /* Created by indicators */

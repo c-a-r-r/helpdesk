@@ -8,7 +8,7 @@
     <!-- Error State -->
     <div v-else-if="error" class="error-state">
       <p>Error loading user data: {{ error }}</p>
-      <router-link to="/offboarding" class="btn-primary">
+      <router-link to="/offboarding" class="btn-secondary">
         <i class="fa-solid fa-arrow-left"></i> Back to Offboarding
       </router-link>
     </div>
@@ -77,12 +77,6 @@
               <input type="text" :value="user?.password || 'N/A'" readonly class="readonly-field">
             </div>
             
-            <!-- Status -->
-            <div class="form-group">
-              <label>Status</label>
-              <input type="text" :value="user?.status || 'N/A'" readonly class="readonly-field" :class="getStatusClass(user?.status)">
-            </div>
-            
             <!-- Notes -->
             <div class="form-group">
               <label>Notes</label>
@@ -101,11 +95,19 @@
         <div class="scripts-grid">
           <!-- JumpCloud Scripts -->
           <div class="script-group">
-            <h3>🔗 JumpCloud Operations</h3>
+            <div class="script-header">
+              <h3><i class="fa-solid fa-user"></i> JumpCloud Operations</h3>
+              <div class="status-badge-container">
+                <span class="status-label">JumpCloud Status:</span>
+                <span :class="getScriptStatusClass('jumpcloud')" class="status-badge">
+                  {{ getScriptStatusText('jumpcloud') }}
+                </span>
+              </div>
+            </div>
             <div class="script-list">
               <button 
                 @click="executeScript('jumpcloud', 'terminate_user')"
-                class="script-btn jumpcloud"
+                class="btn-primary jumpcloud"
                 :disabled="isExecuting"
               >
                 <span class="btn-icon"><i class="fa-solid fa-user-slash"></i></span>
@@ -116,11 +118,19 @@
 
           <!-- Google Workspace Scripts -->
           <div class="script-group">
-            <h3>🔵 Google Workspace Operations</h3>
+            <div class="script-header">
+              <h3><i class="fa-brands fa-google"></i>Google Workspace Operations</h3>
+              <div class="status-badge-container">
+                <span class="status-label">Google Status:</span>
+                <span :class="getScriptStatusClass('google')" class="status-badge">
+                  {{ getScriptStatusText('google') }}
+                </span>
+              </div>
+            </div>
             <div class="script-list">
               <button 
                 @click="executeScript('offboarding', 'terminate_user_google')"
-                class="script-btn google"
+                class="btn-primary google"
                 :disabled="isExecuting"
               >
                 <span class="btn-icon"><i class="fa-solid fa-user-xmark"></i></span>
@@ -131,11 +141,19 @@
 
           <!-- Automox Scripts -->
           <div class="script-group">
-            <h3>🛡️ Automox Operations</h3>
+            <div class="script-header">
+              <h3><i class="fa-solid fa-user-astronaut"></i> Automox Operations</h3>
+              <div class="status-badge-container">
+                <span class="status-label">Automox Status:</span>
+                <span :class="getScriptStatusClass('automox')" class="status-badge">
+                  {{ getScriptStatusText('automox') }}
+                </span>
+              </div>
+            </div>
             <div class="script-list">
               <button 
                 @click="executeScript('automox', 'remove_agent')"
-                class="script-btn automox"
+                class="btn-primary automox"
                 :disabled="isExecuting"
               >
                 <span class="btn-icon"><i class="fa-solid fa-desktop"></i></span>
@@ -181,8 +199,8 @@
       <div class="user-form-container">
         <div class="section-title">
           <h2>Execution Logs</h2>
-          <button class="btn-secondary" @click="fetchScriptLogs">
-            <i class="fa-solid fa-arrows-rotate"></i> Refresh
+          <button class="btn-secondary" @click="fetchScriptLogs" style="margin-top: 10px;">
+            <i class="fa-solid fa-arrows-rotate" ></i> Refresh
           </button>
         </div>
         <div class="logs-content">
@@ -451,6 +469,37 @@ export default {
       }
     },
     
+    getScriptStatusText(scriptType) {
+      if (!this.user) return 'NOT RUN YET'
+      
+      let status = null
+      if (scriptType === 'jumpcloud') {
+        status = this.user.jumpcloud_status
+      } else if (scriptType === 'google') {
+        status = this.user.google_status
+      } else if (scriptType === 'automox') {
+        status = this.user.automox_status
+      }
+      
+      return status || 'NOT RUN YET'
+    },
+    
+    getScriptStatusClass(scriptType) {
+      const status = this.getScriptStatusText(scriptType)
+      
+      if (status === 'NOT RUN YET') {
+        return 'script-status-not-run'
+      } else if (status.includes('TERMINATED') || status.includes('REMOVED')) {
+        return 'script-status-success'
+      } else if (status.includes('NOT FOUND')) {
+        return 'script-status-warning'
+      } else if (status.includes('FAILED')) {
+        return 'script-status-error'
+      } else {
+        return 'script-status-unknown'
+      }
+    },
+    
     formatDateTime(dateString) {
       if (!dateString) return 'N/A'
       return new Date(dateString).toLocaleString()
@@ -473,6 +522,9 @@ export default {
         
         // Refresh logs after execution
         this.fetchScriptLogs()
+        
+        // Refresh user data to get updated script statuses
+        await this.fetchUser()
         
         // If this was a successful deactivation, update user status
         if (response.data.success && (scriptName === 'deactivate_user' || scriptName === 'suspend_user')) {
@@ -643,137 +695,203 @@ export default {
 .scripts-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 16px;
 }
 
 .script-group {
   border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 12px;
-  background: #f9fafb;
+  border-radius: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
 }
 
-.script-group h3 {
+.script-group:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.script-header {
+  margin-bottom: 16px;
+}
+
+.script-header h3 {
   margin: 0 0 8px 0;
   color: #1f2937;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+}
+
+.status-badge-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.status-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 500;
+  min-width: fit-content;
+}
+
+.status-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+/* Script Status Badge Colors */
+.script-status-not-run {
+  background: #f3f4f6;
+  color: #6b7280;
+  border-color: #d1d5db;
+}
+
+.script-status-success {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+  border-color: #10b981;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.2);
+}
+
+.script-status-warning {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  border-color: #f59e0b;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.2);
+}
+
+.script-status-error {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+  border-color: #ef4444;
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.2);
+}
+
+.script-status-unknown {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #6b7280;
 }
 
 .script-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  align-items: flex-start;
 }
-
-.script-btn {
-  display: flex;
+.btn-back {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  background: white;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #ac83b7 0%, #75797f 100%);
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  padding: 10px 20px;
+  border-radius: 20px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: left;
-  font-size: 0.85rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  white-space: nowrap;
+  height: 40px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.script-btn:hover:not(:disabled) {
+.btn-back:hover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+  border-color: #cbd5e1;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.script-btn.jumpcloud {
-  border-color: #667eea;
+/* Button Styles */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #26adec 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 26px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 500;
+  text-align: center;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-right: 8px;
+  width: auto;
+  max-width: 200px;
+  height: 40px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.script-btn.jumpcloud:hover:not(:disabled) {
-  border-color: #5a67d8;
-  background: #f7fafc;
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
 }
 
-.script-btn.google {
-  border-color: #10b981;
-}
-
-.script-btn.google:hover:not(:disabled) {
-  border-color: #059669;
-  background: #f0fdf4;
-}
-
-.script-btn.automox {
-  border-color: #f59e0b;
-}
-
-.script-btn.automox:hover:not(:disabled) {
-  border-color: #d97706;
-  background: #fffbeb;
-}
-
-.script-btn:disabled {
+.btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .btn-icon {
-  font-size: 1rem;
+  font-size: 0.85rem;
   flex-shrink: 0;
 }
 
 .btn-text {
   font-weight: 500;
-  color: #1f2937;
-}
-
-/* Button Styles */
-.btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.85rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  text-decoration: none;
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+  margin-right: 4px;
 }
 
 .btn-secondary {
-  background: #f8fafc;
-  color: #475569;
-  border: 1px solid #e2e8f0;
-  padding: 8px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 0.85rem;
-  transition: all 0.3s ease;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  background: linear-gradient(135deg, #f8fafc 0%, #c6b9cb 100%);
+  color: #475569;
+  border: 1px solid #c3cad2;
+  padding: 8px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  height: 40px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .btn-secondary:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+  border-color: #8e99a5;
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* Loading States */
