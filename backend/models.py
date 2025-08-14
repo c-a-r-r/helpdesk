@@ -83,6 +83,11 @@ class Onboarding(Base):
     google_created_at = Column(DateTime(timezone=True), nullable=True)  # When Google account was created
     google_error = Column(Text, nullable=True)  # Error message if Google creation failed
     
+    # Individual Script Status Tracking
+    bind_machine_status = Column(Enum(ScriptStatus), nullable=True)  # JumpCloud machine binding status
+    add_alias_status = Column(Enum(ScriptStatus), nullable=True)  # Google Workspace alias creation status
+    force_pwd_change_status = Column(Enum(ScriptStatus), nullable=True)  # Google Workspace force password change status
+    
     # Record Management
     created_by = Column(String(255), nullable=True)  # Email of user who created record, or 'freshdesk-sync' for automated
     

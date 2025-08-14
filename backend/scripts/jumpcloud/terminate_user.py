@@ -158,17 +158,21 @@ class TerminateJumpCloudUser(BaseUserScript):
             for association in associations:
                 if association.get("to", {}).get("id"):
                     system_id = association["to"]["id"]
-                    display_name = self.get_system_display_name(system_id)
-                    if display_name:
+                    hostname = self.get_system_display_name(system_id)
+                    if hostname:
                         associated_systems.append({
                             "system_id": system_id,
-                            "display_name": display_name
+                            "hostname": hostname
                         })
 
             # Step 3: Suspend the user
             suspend_success = self.suspend_user(user_id)
             
             # Step 4: Prepare result
+            # Extract hostnames for database storage
+            hostnames = [system["hostname"] for system in associated_systems if system.get("hostname")]
+            combined_hostnames = ", ".join(hostnames) if hostnames else None
+            
             result = {
                 "jumpcloud_user_id": user_id,
                 "email": email,
@@ -176,6 +180,7 @@ class TerminateJumpCloudUser(BaseUserScript):
                 "user_suspended": suspend_success,
                 "associated_systems": associated_systems,
                 "systems_count": len(associated_systems),
+                "hostnames": combined_hostnames,  # For database storage
                 "terminated_at": datetime.now().isoformat(),
                 "message": f"JumpCloud user {email} {'terminated' if suspend_success else 'partially terminated'}"
             }
@@ -184,7 +189,7 @@ class TerminateJumpCloudUser(BaseUserScript):
                 if associated_systems:
                     self.log_info(f"User {email} suspended successfully. Found {len(associated_systems)} associated systems.")
                     for system in associated_systems:
-                        self.log_info(f"  - System: {system['display_name']} (ID: {system['system_id']})")
+                        self.log_info(f"  - System: {system['hostname']} (ID: {system['system_id']})")
                 else:
                     self.log_info(f"User {email} suspended successfully. No associated systems found.")
             else:

@@ -289,11 +289,23 @@ export default {
 
 /* Sidebar Styles */
 .sidebar {
-  width: 250px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  width: 260px;
+  background: linear-gradient(135deg, #5c72d0 5%, #552684 100%);
   color: white;
-  padding: 0;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  padding-right: 10px;
+  box-shadow: 2px 0 20px rgba(0, 0, 0, 0.15);
+  position: relative;
+}
+
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+  pointer-events: none;
 }
 
 .logo {
@@ -320,30 +332,71 @@ export default {
 
 .navigation ul {
   list-style: none;
-  padding: 0px 0;
+  padding: 10px 8px;
   margin: 0;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 15px 20px;
-  color: rgba(255, 255, 255, 0.8);
+  padding: 12px 20px;
+  margin: 3px 0;
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
-  font-weight: 400;
-  transition: all 0.3s ease;
-  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 0.90rem;
+  border-radius: 25px;
+  position: relative;
+  overflow: hidden;
 }
 
-.nav-item:hover,
-.nav-item.active {
-  background-color: rgba(255, 255, 255, 0.1);
+.nav-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 25px;
+}
+
+.nav-item:hover {
   color: white;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
+  transform: translateX(3px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.nav-item:hover::before {
+  opacity: 1;
+}
+
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+  color: #1f2937;
+  font-weight: 500;
+  transform: translateX(5px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.nav-item.active::before {
+  opacity: 0;
+}
+
+.nav-item.active .icon {
+  color: #374151;
 }
 
 .nav-item .icon {
   margin-right: 12px;
-  font-size: 0.9rem;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  width: 20px;
+  text-align: center;
 }
 
 /* Main Content Styles */

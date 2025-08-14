@@ -396,10 +396,10 @@ class OffboardingScriptLogCRUD:
         
         log = db.query(OffboardingScriptLog).filter(OffboardingScriptLog.id == log_id).first()
         if log:
-            # Map status string to enum
-            if status == "completed":
+            # Map status string to enum - handle both string formats
+            if status.lower() in ["completed", "success"]:
                 log.status = ScriptStatus.SUCCESS
-            elif status == "failed":
+            elif status.lower() in ["failed", "error"]:
                 log.status = ScriptStatus.FAILED
             else:
                 log.status = ScriptStatus.RUNNING

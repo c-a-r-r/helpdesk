@@ -42,52 +42,52 @@
           </div>
         </div>
         
-        <!-- Completed Users Card -->
+        <!-- JumpCloud Accounts Card -->
         <div class="stat-card">
-          <div class="card-icon completed">
-            <i class="fas fa-check-circle"></i>
+          <div class="card-icon jumpcloud">
+            <i class="fas fa-user-check"></i>
           </div>
           <div class="card-content">
-            <h3>{{ stats.completedUsers }}</h3>
-            <p>Completed</p>
+            <h3>{{ stats.jumpcloudAccounts }}</h3>
+            <p>JumpCloud Accounts</p>
             <div class="card-meta">
-              <span class="meta-badge status-completed">
+              <span class="meta-badge status-jumpcloud">
                 <i class="fas fa-circle"></i>
-                Active
+                Created
               </span>
             </div>
           </div>
         </div>
         
-        <!-- In Progress Card -->
+        <!-- Google Workspace Accounts Card -->
         <div class="stat-card">
-          <div class="card-icon in-progress">
-            <i class="fas fa-spinner"></i>
+          <div class="card-icon google">
+            <i class="fab fa-google"></i>
           </div>
           <div class="card-content">
-            <h3>{{ stats.inProgressUsers }}</h3>
-            <p>In Progress</p>
+            <h3>{{ stats.googleAccounts }}</h3>
+            <p>Google Workspace</p>
             <div class="card-meta">
-              <span class="meta-badge status-progress">
+              <span class="meta-badge status-google">
                 <i class="fas fa-circle"></i>
-                Processing
+              Created
               </span>
             </div>
           </div>
         </div>
         
-        <!-- Pending Card -->
+        <!-- Recent Scripts Card -->
         <div class="stat-card">
-          <div class="card-icon pending">
-            <i class="fas fa-hourglass-half"></i>
+          <div class="card-icon scripts">
+            <i class="fas fa-terminal"></i>
           </div>
           <div class="card-content">
-            <h3>{{ stats.pendingUsers }}</h3>
-            <p>Pending</p>
+            <h3>{{ stats.recentScripts }}</h3>
+            <p>Scripts Run</p>
             <div class="card-meta">
-              <span class="meta-badge status-pending">
+              <span class="meta-badge status-scripts">
                 <i class="fas fa-circle"></i>
-                Waiting
+                Executed
               </span>
             </div>
           </div>
@@ -219,9 +219,9 @@ export default {
     return {
       stats: {
         totalUsers: 0,
-        completedUsers: 0,
-        inProgressUsers: 0,
-        pendingUsers: 0,
+        jumpcloudAccounts: 0,
+        googleAccounts: 0,
+        recentScripts: 0,
         offboardedUsers: 0
       },
       recentActivities: [],
@@ -248,9 +248,9 @@ export default {
         // Map the backend data to frontend properties
         this.stats = {
           totalUsers: statsData.totalUsers || 0,
-          completedUsers: statsData.completedUsers || 0,
-          inProgressUsers: statsData.inProgressUsers || 0,
-          pendingUsers: statsData.pendingUsers || 0,
+          jumpcloudAccounts: statsData.jumpcloudAccounts || 0,
+          googleAccounts: statsData.googleAccounts || 0,
+          recentScripts: statsData.recentScripts || 0,
           offboardedUsers: statsData.offboardedUsers || 0
         }
         
@@ -512,6 +512,21 @@ export default {
   box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
 }
 
+.card-icon.jumpcloud {
+  background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+}
+
+.card-icon.google {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.card-icon.scripts {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
 .card-icon.in-progress {
   background: linear-gradient(135deg, #f4c174 0%, #f09630 100%);
   box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
@@ -573,6 +588,18 @@ export default {
 
 .meta-badge.status-completed {
   background: #16a34a;
+}
+
+.meta-badge.status-jumpcloud {
+  background: #4f46e5;
+}
+
+.meta-badge.status-google {
+  background: #10b981;
+}
+
+.meta-badge.status-scripts {
+  background: #f59e0b;
 }
 
 .meta-badge.status-progress {
@@ -640,11 +667,36 @@ export default {
 
 /* Buttons */
 .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #26adec 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 26px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 500;
+  text-align: center;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-right: 8px;
+  width: auto;
+  max-width: 200px;
+  height: 40px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+
+/* .btn-primary {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   font-weight: 600;
   font-size: 0.85rem;
@@ -653,7 +705,7 @@ export default {
   gap: 6px;
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
+} */
 
 .btn-primary:hover {
   transform: translateY(-1px);

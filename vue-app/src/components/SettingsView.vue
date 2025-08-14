@@ -852,10 +852,10 @@ export default {
 
 .page-header {
   margin-bottom: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg,  #d8f0ff 0%, #454a62 100%);
   border-radius: 12px;
   padding: 10px 24px;
-  color: white;
+  color: rgb(50, 49, 49);
   box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
 }
 

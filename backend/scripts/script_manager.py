@@ -118,25 +118,47 @@ class ScriptManager:
             stdout, stderr = process.communicate(input=json.dumps(script_input))
             execution_time = int(time.time() - start_time)
             
-            success = process.returncode == 0
-            status = ScriptStatus.SUCCESS if success else ScriptStatus.FAILED
+            # First check process return code
+            process_success = process.returncode == 0
+            
+            # If process was successful, also check the JSON output for internal status
+            actual_success = process_success
+            parsed_output = None
+            
+            if process_success and stdout.strip():
+                try:
+                    parsed_output = json.loads(stdout)
+                    # Check if the script internally reported a failure
+                    if isinstance(parsed_output, dict):
+                        internal_success = parsed_output.get("success", True)
+                        if not internal_success:
+                            actual_success = False
+                            # If script reported failure, use its error message
+                            if not stderr and parsed_output.get("error"):
+                                stderr = parsed_output.get("error")
+                except json.JSONDecodeError:
+                    # If we can't parse the output, trust the process return code
+                    pass
+            
+            status = ScriptStatus.SUCCESS if actual_success else ScriptStatus.FAILED
             
             # Update log with completion
             ScriptLogCRUD.update_completion(
                 db, script_log.id, status.value,
-                output=stdout if success else None,
-                error_message=stderr if not success else None,
+                output=stdout if actual_success else None,
+                error_message=stderr if not actual_success else None,
                 execution_time_seconds=execution_time
             )
             
             return {
-                "success": success,
+                "success": actual_success,
                 "output": stdout,
-                "error": stderr if not success else None,
+                "error": stderr if not actual_success else None,
                 "script_type": script_type,
                 "script_name": script_name,
                 "executed_by": executed_by,
-                "executed_at": datetime.now()
+                "executed_at": datetime.now(),
+                "parsed_output": parsed_output
             }
             
         except Exception as e:

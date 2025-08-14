@@ -34,6 +34,12 @@ class BaseUserScript(ABC):
             # Execute the main script logic
             result = self.execute()
             
+            # Check if the script execution failed based on the result status
+            if isinstance(result, dict) and result.get("status") == "failed":
+                error_message = result.get("error", result.get("message", "Script execution failed"))
+                self.output_error(error_message)
+                return
+            
             # Output success result
             self.output_success(result)
             

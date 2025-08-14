@@ -858,7 +858,7 @@ export default {
 
 /* Bulk Actions Section */
 .bulk-actions-section {
-  background: linear-gradient(135deg,  #0094ef 0%, #454a62 100%);
+  background: linear-gradient(135deg,  #d8f0ff 0%, #454a62 100%);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
@@ -880,13 +880,13 @@ export default {
 }
 
 .selected-count {
-  color: white;
+  color: rgb(67, 67, 67);
   font-weight: 600;
   font-size: 1.1rem;
 }
 
 .btn-clear {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(69, 69, 69, 0.85);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 8px 16px;

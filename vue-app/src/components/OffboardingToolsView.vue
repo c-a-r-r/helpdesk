@@ -330,12 +330,31 @@ export default {
     
     getDetailedStatus(log) {
       const scriptType = log.script_type.toLowerCase()
-      const scriptName = log.script_name.toLowerCase()
       
-      // Parse the output to get detailed status
+      // First check the database status field if available
+      if (log.status === 'SUCCESS' || log.status === 'success') {
+        return scriptType === 'automox' ? 'Agent Removed' : 'User Terminated'
+      } else if (log.status === 'WARNING' || log.status === 'warning') {
+        return scriptType === 'automox' ? 'Agent Not Found' : 'User Not Found'
+      } else if (log.status === 'FAILED' || log.status === 'failed' || log.status === 'ERROR') {
+        // For failed status, check the output to determine the specific failure reason
+        if (log.output || log.error_message) {
+          const outputText = (log.output || log.error_message || '').toLowerCase()
+          
+          // Check for "user not found" or "agent not found" in the output
+          if (outputText.includes('user not found') || outputText.includes('no jumpcloud user found') || 
+              outputText.includes('not found in jumpcloud') || outputText.includes('agent not found')) {
+            return scriptType === 'automox' ? 'Agent Not Found' : 'User Not Found'
+          }
+        }
+        
+        // Default failure messages
+        return scriptType === 'automox' ? 'Removal Failed' : 'Termination Failed'
+      }
+      
+      // Fallback: Parse the output JSON if status is not clear
       if (log.output) {
         try {
-          // Check for JSON in the output
           let outputJson = null
           
           // Handle cases where output might have extra text before JSON
@@ -347,81 +366,45 @@ export default {
             outputJson = JSON.parse(log.output)
           }
           
-          // PRIORITY 1: Check if there's a nested result with detailed status
-          if (outputJson && outputJson.result && outputJson.result.status) {
-            const resultStatus = outputJson.result.status.toLowerCase()
-            
-            // Handle different script types with specific statuses
-            if (scriptType === 'automox') {
-              if (resultStatus === 'success') {
-                return 'Agent Removed'
-              } else if (resultStatus === 'warning') {
-                return 'Agent Not Found'
-              } else if (resultStatus === 'failed') {
-                return 'Removal Failed'
+          if (outputJson) {
+            // Check top-level success first
+            if (outputJson.success === false) {
+              // Check error message for specific failure types
+              const errorMsg = (outputJson.error || '').toLowerCase()
+              if (errorMsg.includes('user not found') || errorMsg.includes('not found in jumpcloud') || 
+                  errorMsg.includes('agent not found')) {
+                return scriptType === 'automox' ? 'Agent Not Found' : 'User Not Found'
               }
-            } else if (scriptType === 'jumpcloud') {
-              if (resultStatus === 'success') {
-                return 'User Terminated'
-              } else if (resultStatus === 'warning') {
-                return 'User Not Found'
-              } else if (resultStatus === 'failed') {
-                return 'Termination Failed'
+              return scriptType === 'automox' ? 'Removal Failed' : 'Termination Failed'
+            } else if (outputJson.success === true) {
+              // Check nested result status
+              const nestedResult = outputJson.result || {}
+              if (nestedResult.status) {
+                const resultStatus = nestedResult.status.toLowerCase()
+                if (resultStatus === 'completed' || resultStatus === 'success') {
+                  return scriptType === 'automox' ? 'Agent Removed' : 'User Terminated'
+                } else if (resultStatus === 'warning') {
+                  return scriptType === 'automox' ? 'Agent Not Found' : 'User Not Found'
+                } else if (resultStatus === 'failed') {
+                  return scriptType === 'automox' ? 'Removal Failed' : 'Termination Failed'
+                }
               }
-            } else if (scriptType === 'google' || scriptType === 'offboarding') {
-              if (resultStatus === 'success') {
-                return 'User Terminated'
-              } else if (resultStatus === 'warning') {
-                return 'User Not Found'
-              } else if (resultStatus === 'failed') {
-                return 'Termination Failed'
-              }
+              // Default success case
+              return scriptType === 'automox' ? 'Agent Removed' : 'User Terminated'
             }
-            
-            // Fallback to generic status based on result.status
-            if (resultStatus === 'success') {
-              return 'Success'
-            } else if (resultStatus === 'warning') {
-              return 'Warning'
-            } else if (resultStatus === 'failed') {
-              return 'Failed'
-            }
-          }
-          
-          // PRIORITY 2: Only check top-level success if no result.status exists
-          if (outputJson && outputJson.success === true && !outputJson.result) {
-            return scriptType === 'automox' ? 'Agent Removed' : 
-                   scriptType === 'jumpcloud' ? 'User Terminated' : 
-                   scriptType === 'google' || scriptType === 'offboarding' ? 'User Terminated' : 'Success'
-          } else if (outputJson && outputJson.success === false) {
-            return 'Failed'
           }
         } catch (e) {
           // Handle non-JSON output or parsing errors
           const output = log.output.toLowerCase()
-          
-          // Check for warning markers first
-          if (output.includes('warning_status:')) {
-            return scriptType === 'automox' ? 'Agent Not Found' : 'User Not Found'
-          }
           
           if (output.includes('not found')) {
             return scriptType === 'automox' ? 'Agent Not Found' : 'User Not Found'
           } else if (output.includes('successfully') || output.includes('completed')) {
             return scriptType === 'automox' ? 'Agent Removed' : 'User Terminated'
           } else if (output.includes('failed') || output.includes('error')) {
-            return 'Failed'
+            return scriptType === 'automox' ? 'Removal Failed' : 'Termination Failed'
           }
         }
-      }
-      
-      // PRIORITY 3: Check database status as final fallback
-      if (log.status === 'SUCCESS' || log.status === 'success') {
-        return scriptType === 'automox' ? 'Agent Removed' : 'User Terminated'
-      } else if (log.status === 'WARNING' || log.status === 'warning') {
-        return scriptType === 'automox' ? 'Agent Not Found' : 'User Not Found'
-      } else if (log.status === 'FAILED' || log.status === 'failed' || log.status === 'ERROR') {
-        return 'Failed'
       }
       
       return 'Unknown'

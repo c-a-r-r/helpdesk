@@ -462,7 +462,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  background: rgba(46, 1, 46, 0.039);
+  background: rgba(229, 229, 229, 0.509);
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   margin-bottom: 8px;

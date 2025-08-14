@@ -340,15 +340,26 @@ async def execute_script(
                     update_data["jumpcloud_status"] = status_value
                     if result.get("success"):
                         update_data["jumpcloud_created_at"] = current_time
+                        update_data["jumpcloud_error"] = None  # Clear any previous error
                     else:
                         update_data["jumpcloud_error"] = result.get("error", "Unknown error")
+                        
+                elif request.script_type == "jumpcloud" and request.script_name == "bind_machine":
+                    update_data["bind_machine_status"] = status_value
                         
                 elif request.script_type == "google" and request.script_name == "create_user":
                     update_data["google_status"] = status_value
                     if result.get("success"):
                         update_data["google_created_at"] = current_time
+                        update_data["google_error"] = None  # Clear any previous error
                     else:
                         update_data["google_error"] = result.get("error", "Unknown error")
+                        
+                elif request.script_type == "google" and request.script_name == "add_aliases":
+                    update_data["add_alias_status"] = status_value
+                    
+                elif request.script_type == "google" and request.script_name == "force_password_change":
+                    update_data["force_pwd_change_status"] = status_value
                 
                 # Update the onboarding record if we have status updates
                 if update_data:
@@ -510,27 +521,38 @@ async def bulk_create_google_user(
 @router.get("/dashboard/stats")
 def get_dashboard_stats(db: Session = Depends(get_db)):
     """Get dashboard statistics"""
-    from sqlalchemy import func, case
-    from models import Onboarding, OnboardingStatus, Offboarding, OffboardingStatus
+    from sqlalchemy import func, case, and_
+    from models import Onboarding, OnboardingStatus, Offboarding, OffboardingStatus, ScriptStatus, ScriptLog
+    from datetime import datetime, timedelta
     
-    # Get onboarding counts by status
-    onboarding_stats = db.query(
-        func.count(Onboarding.id).label('total'),
-        func.sum(case((Onboarding.status == OnboardingStatus.COMPLETED, 1), else_=0)).label('completed'),
-        func.sum(case((Onboarding.status == OnboardingStatus.PENDING, 1), else_=0)).label('pending'),
-        func.sum(case((Onboarding.status == OnboardingStatus.IN_PROGRESS, 1), else_=0)).label('in_progress'),
-        func.sum(case((Onboarding.status == OnboardingStatus.FAILED, 1), else_=0)).label('failed')
-    ).first()
+    # Get total users count
+    total_users = db.query(func.count(Onboarding.id)).scalar() or 0
+    
+    # Get JumpCloud accounts created (users with successful JumpCloud status)
+    jumpcloud_accounts = db.query(func.count(Onboarding.id)).filter(
+        Onboarding.jumpcloud_status == ScriptStatus.SUCCESS
+    ).scalar() or 0
+    
+    # Get Google Workspace accounts created (users with successful Google status)
+    google_accounts = db.query(func.count(Onboarding.id)).filter(
+        Onboarding.google_status == ScriptStatus.SUCCESS
+    ).scalar() or 0
+    
+    # Get recent script executions (last 7 days)
+    seven_days_ago = datetime.now() - timedelta(days=7)
+    recent_scripts = db.query(func.count(ScriptLog.id)).filter(
+        ScriptLog.started_at >= seven_days_ago
+    ).scalar() or 0
     
     # Get offboarding counts
     offboarding_count = db.query(func.count(Offboarding.id)).scalar() or 0
     
     return {
-        "totalUsers": onboarding_stats.total or 0,
-        "completedUsers": onboarding_stats.completed or 0,
-        "pendingUsers": onboarding_stats.pending or 0,
-        "inProgressUsers": onboarding_stats.in_progress or 0,
-        "offboardedUsers": offboarding_count  # Real count of offboarded users
+        "totalUsers": total_users,
+        "jumpcloudAccounts": jumpcloud_accounts,
+        "googleAccounts": google_accounts,
+        "recentScripts": recent_scripts,
+        "offboardedUsers": offboarding_count
     }
 
 @router.get("/dashboard/recent-activity")
@@ -1193,6 +1215,8 @@ async def execute_offboarding_script(
             
             start_time = time.time()
             
+            print(f"🔍 DEBUG: About to execute script: {request.script_type}/{request.script_name}")
+            
             # Execute the script
             result = await script_manager.execute_script(
                 script_type=request.script_type,
@@ -1204,6 +1228,8 @@ async def execute_offboarding_script(
                 additional_params=request.additional_params
             )
             
+            print(f"🔍 DEBUG: Script execution completed")
+            
             end_time = time.time()
             execution_time = int(end_time - start_time)
             
@@ -1212,42 +1238,54 @@ async def execute_offboarding_script(
             script_status = ScriptStatus.FAILED  # default
             output_data = result.get("output", "")
             
+            # Debug logging
+            print(f"🔍 DEBUG: Script result: {result}")
+            print(f"🔍 DEBUG: result.get('success'): {result.get('success', False)}")
+            print(f"🔍 DEBUG: result.get('result'): {result.get('result', {})}")
+            
             # Determine the script status for logging
             script_execution_status = None
             if result.get("success", False):
-                # Check if there's a nested result with more specific status
-                nested_result = result.get("result", {})
-                if isinstance(nested_result, dict):
+                print("🔍 DEBUG: Entered success branch")
+                # Check if there's parsed output with more specific status
+                parsed_output = result.get("parsed_output", {})
+                print(f"🔍 DEBUG: parsed_output: {parsed_output}")
+                
+                nested_result = {}
+                if isinstance(parsed_output, dict):
+                    # Get the nested result from parsed output
+                    nested_result = parsed_output.get("result", {})
+                    print(f"🔍 DEBUG: nested_result from parsed_output: {nested_result}")
+                    
+                    # Handle double-nested result structure (result.result.result)
+                    if "result" in nested_result and isinstance(nested_result["result"], dict):
+                        print(f"🔍 DEBUG: Found double-nested result: {nested_result['result']}")
+                        nested_result = nested_result["result"]
+                    
                     # First check for status field
                     if "status" in nested_result:
                         nested_status = nested_result["status"].lower()
-                        if nested_status == "success":
+                        print(f"🔍 DEBUG: nested_status: {nested_status}")
+                        if nested_status in ["success", "completed"]:
+                            print("🔍 DEBUG: Status is success/completed - setting SUCCESS")
                             script_status = ScriptStatus.SUCCESS
-                            # Use message if available, otherwise use default success messages
-                            if "message" in nested_result:
-                                script_execution_status = nested_result["message"]
-                            else:
-                                # Map to user-friendly status for database storage
-                                if request.script_type.lower() == "automox":
-                                    script_execution_status = "AGENT REMOVED"
-                                elif request.script_type.lower() == "jumpcloud":
-                                    script_execution_status = "USER TERMINATED"
-                                elif request.script_type.lower() in ["google", "offboarding"]:
-                                    script_execution_status = "USER TERMINATED"
+                            # Always use clean, short status messages for database storage
+                            if request.script_type.lower() == "automox":
+                                script_execution_status = "AGENT REMOVED"
+                            elif request.script_type.lower() == "jumpcloud":
+                                script_execution_status = "USER TERMINATED"
+                            elif request.script_type.lower() in ["google", "offboarding"]:
+                                script_execution_status = "USER TERMINATED"
                         elif nested_status == "warning":
                             # Store as SUCCESS but preserve the warning info in output
                             script_status = ScriptStatus.SUCCESS
-                            # Use message if available, otherwise use default warning messages
-                            if "message" in nested_result:
-                                script_execution_status = nested_result["message"]
-                            else:
-                                # Map to user-friendly warning status
-                                if request.script_type.lower() == "automox":
-                                    script_execution_status = "AGENT NOT FOUND"
-                                elif request.script_type.lower() == "jumpcloud":
-                                    script_execution_status = "USER NOT FOUND"
-                                elif request.script_type.lower() in ["google", "offboarding"]:
-                                    script_execution_status = "USER NOT FOUND"
+                            # Always use clean, short warning status messages
+                            if request.script_type.lower() == "automox":
+                                script_execution_status = "AGENT NOT FOUND"
+                            elif request.script_type.lower() == "jumpcloud":
+                                script_execution_status = "USER NOT FOUND"
+                            elif request.script_type.lower() in ["google", "offboarding"]:
+                                script_execution_status = "USER NOT FOUND"
                             # Add a marker to the output so frontend can detect warnings
                             if isinstance(result.get("output"), str) and '{"success": true, "result":' in result.get("output", ""):
                                 # Output already contains the JSON with warning status
@@ -1269,16 +1307,35 @@ async def execute_offboarding_script(
                                 elif request.script_type.lower() in ["google", "offboarding"]:
                                     script_execution_status = "TERMINATION FAILED"
                     elif "message" in nested_result:
-                        # Use the actual message from the script result
-                        script_execution_status = nested_result["message"]
-                        # Determine success/failure based on the message content
+                        # Determine success/failure based on the message content and use clean status
                         message_lower = nested_result["message"].lower()
                         if "failed" in message_lower or "error" in message_lower:
                             script_status = ScriptStatus.FAILED
+                            # Use clean failure messages
+                            if request.script_type.lower() == "automox":
+                                script_execution_status = "REMOVAL FAILED"
+                            elif request.script_type.lower() == "jumpcloud":
+                                script_execution_status = "TERMINATION FAILED"
+                            elif request.script_type.lower() in ["google", "offboarding"]:
+                                script_execution_status = "TERMINATION FAILED"
                         elif "not found" in message_lower or "unknown" in message_lower:
                             script_status = ScriptStatus.SUCCESS  # These are valid responses, not failures
+                            # Use clean warning messages
+                            if request.script_type.lower() == "automox":
+                                script_execution_status = "AGENT NOT FOUND"
+                            elif request.script_type.lower() == "jumpcloud":
+                                script_execution_status = "USER NOT FOUND"
+                            elif request.script_type.lower() in ["google", "offboarding"]:
+                                script_execution_status = "USER NOT FOUND"
                         else:
                             script_status = ScriptStatus.SUCCESS
+                            # Use clean success messages
+                            if request.script_type.lower() == "automox":
+                                script_execution_status = "AGENT REMOVED"
+                            elif request.script_type.lower() == "jumpcloud":
+                                script_execution_status = "USER TERMINATED"
+                            elif request.script_type.lower() in ["google", "offboarding"]:
+                                script_execution_status = "USER TERMINATED"
                 else:
                     # No nested result, use top-level success
                     script_status = ScriptStatus.SUCCESS
@@ -1298,8 +1355,21 @@ async def execute_offboarding_script(
                     script_execution_status = "TERMINATION FAILED"
             
             # Update the script status in the offboarding record
+            print(f"🔍 DEBUG: script_execution_status = {script_execution_status}")
+            print(f"🔍 DEBUG: script_status = {script_status}")
             if script_execution_status:
                 update_data = {}
+                
+                # Extract hostname information for JumpCloud scripts
+                if request.script_type.lower() == "jumpcloud" and result.get("parsed_output"):
+                    parsed_output = result.get("parsed_output", {})
+                    if isinstance(parsed_output, dict):
+                        nested_result = parsed_output.get("result", {})
+                        if isinstance(nested_result, dict) and nested_result.get("hostnames"):
+                            update_data["hostname"] = nested_result["hostnames"]
+                            print(f"🔍 DEBUG: Extracted hostnames for database: {nested_result['hostnames']}")
+                
+                # Set status fields
                 if request.script_type.lower() == "automox":
                     update_data["automox_status"] = script_execution_status
                 elif request.script_type.lower() == "jumpcloud":
@@ -1307,9 +1377,12 @@ async def execute_offboarding_script(
                 elif request.script_type.lower() in ["google", "offboarding"]:
                     update_data["google_status"] = script_execution_status
                 
+                print(f"🔍 DEBUG: update_data = {update_data}")
                 if update_data:
                     offboarding_update = OffboardingUpdate(**update_data)
+                    print(f"🔍 DEBUG: About to update database with: {update_data}")
                     OffboardingCRUD.update(db, offboarding_id, offboarding_update, offboarding_data.company_email)
+                    print(f"🔍 DEBUG: Database update completed")
             
             # If no specific status was set, check the script log status and use a default message
             if not script_execution_status:
@@ -1333,10 +1406,11 @@ async def execute_offboarding_script(
                     offboarding_update = OffboardingUpdate(**update_data)
                     OffboardingCRUD.update(db, offboarding_id, offboarding_update, offboarding_data.company_email)
             
+            # Update the offboarding script log with completion details
             OffboardingScriptLogCRUD.update_completion(
                 db, 
                 script_log.id,
-                status=script_status,
+                status=script_status.value,  # Convert enum to string
                 output=output_data,
                 error_message=result.get("error") if script_status == ScriptStatus.FAILED else None,
                 execution_time_seconds=execution_time

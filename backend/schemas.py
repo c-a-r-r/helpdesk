@@ -144,6 +144,10 @@ class OnboardingUpdate(BaseModel):
     google_status: Optional[ScriptStatus] = None
     google_created_at: Optional[datetime] = None
     google_error: Optional[str] = None
+    # Individual script status tracking
+    bind_machine_status: Optional[ScriptStatus] = None
+    add_alias_status: Optional[ScriptStatus] = None
+    force_pwd_change_status: Optional[ScriptStatus] = None
 
 class OnboardingResponse(OnboardingBase):
     id: int
@@ -159,6 +163,10 @@ class OnboardingResponse(OnboardingBase):
     google_status: Optional[ScriptStatus] = None
     google_created_at: Optional[datetime] = None
     google_error: Optional[str] = None
+    # Individual script status tracking
+    bind_machine_status: Optional[ScriptStatus] = None
+    add_alias_status: Optional[ScriptStatus] = None
+    force_pwd_change_status: Optional[ScriptStatus] = None
 
     class Config:
         from_attributes = True

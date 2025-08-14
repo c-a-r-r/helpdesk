@@ -502,6 +502,9 @@ export default {
 
         // Refresh logs from backend to get the most up-to-date data
         await this.fetchExecutionLogs()
+        
+        // Refresh user data to update status badges
+        await this.fetchUserData()
 
       } catch (error) {
         console.error('Script execution error:', error)
@@ -692,6 +695,29 @@ export default {
     },
 
     getIndividualScriptStatusClass(scriptType, scriptName) {
+      // First check if we have individual status fields for each specific script
+      let status = null
+      
+      if (scriptType === 'jumpcloud' && scriptName === 'create_user') {
+        status = this.userData?.jumpcloud_status
+      } else if (scriptType === 'jumpcloud' && scriptName === 'bind_machine') {
+        status = this.userData?.bind_machine_status
+      } else if (scriptType === 'google' && scriptName === 'create_user') {
+        status = this.userData?.google_status
+      } else if (scriptType === 'google' && scriptName === 'add_aliases') {
+        status = this.userData?.add_alias_status
+      } else if (scriptType === 'google' && scriptName === 'force_password_change') {
+        status = this.userData?.force_pwd_change_status
+      }
+      
+      // If we have a database status, use that
+      if (status) {
+        if (status === 'SUCCESS') return 'status-success'
+        if (status === 'FAILED') return 'status-failed'
+        if (status === 'RUNNING') return 'status-running'
+      }
+      
+      // Fallback to execution logs if no database status
       const lastResult = this.getLastExecutionResult(scriptType, scriptName)
       if (!lastResult) return 'status-not-run'
       
@@ -700,6 +726,29 @@ export default {
     },
 
     getIndividualScriptStatusText(scriptType, scriptName) {
+      // First check if we have individual status fields for each specific script
+      let status = null
+      
+      if (scriptType === 'jumpcloud' && scriptName === 'create_user') {
+        status = this.userData?.jumpcloud_status
+      } else if (scriptType === 'jumpcloud' && scriptName === 'bind_machine') {
+        status = this.userData?.bind_machine_status
+      } else if (scriptType === 'google' && scriptName === 'create_user') {
+        status = this.userData?.google_status
+      } else if (scriptType === 'google' && scriptName === 'add_aliases') {
+        status = this.userData?.add_alias_status
+      } else if (scriptType === 'google' && scriptName === 'force_password_change') {
+        status = this.userData?.force_pwd_change_status
+      }
+      
+      // If we have a database status, use that
+      if (status) {
+        if (status === 'SUCCESS') return 'Success'
+        if (status === 'FAILED') return 'Failed'
+        if (status === 'RUNNING') return 'Running'
+      }
+      
+      // Fallback to execution logs if no database status
       const lastResult = this.getLastExecutionResult(scriptType, scriptName)
       if (!lastResult) return 'Not Run Yet'
       
