@@ -1419,13 +1419,17 @@ async def execute_offboarding_script(
             return result
             
         except Exception as script_error:
-            # Update log with error
-            OffboardingScriptLogCRUD.update_completion(
-                db,
-                script_log.id,
-                status="failed",
-                error_message=str(script_error)
-            )
+            # Update log with error - handle potential database rollback
+            try:
+                OffboardingScriptLogCRUD.update_completion(
+                    db,
+                    script_log.id,
+                    status="failed",
+                    error_message=str(script_error)
+                )
+            except Exception as db_error:
+                print(f"Database error while updating script log: {str(db_error)}")
+                # Continue with the original script error
             raise
         
     except Exception as e:

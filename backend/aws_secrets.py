@@ -48,18 +48,34 @@ class SecretsManager:
         """Get Google Workspace credentials from AWS Secrets Manager"""
         if self.use_aws_secrets:
             try:
-                # Use specific Google secret ARN
-                google_secret_arn = "arn:aws:secretsmanager:us-west-2:134308154914:secret:google-service-account-signature-secret-KHaS4K"
-                
                 session = boto3.session.Session()
                 client = session.client(service_name="secretsmanager", region_name=self.region)
                 
-                logger.info(f"Retrieving Google service account credentials from AWS Secret: {google_secret_arn}")
+                # First try to get Google credentials from the main helpdesk secret
+                try:
+                    logger.info(f"Trying to retrieve Google credentials from main secret: {self.secret_arn}")
+                    response = client.get_secret_value(SecretId=self.secret_arn)
+                    secret_data = json.loads(response["SecretString"])
+                    
+                    # Look for google credentials in the main secret
+                    if "google_service_account" in secret_data:
+                        logger.info("Found Google service account credentials in main secret")
+                        google_creds = secret_data["google_service_account"]
+                        if isinstance(google_creds, str):
+                            return json.loads(google_creds)
+                        return google_creds
+                        
+                except Exception as main_secret_error:
+                    logger.info(f"Could not get Google credentials from main secret: {main_secret_error}")
+                
+                # Fallback: try the dedicated Google secret
+                google_secret_arn = "arn:aws:secretsmanager:us-west-2:134308154914:secret:google-service-account-signature-secret-KHaS4K"
+                logger.info(f"Trying dedicated Google secret: {google_secret_arn}")
                 
                 response = client.get_secret_value(SecretId=google_secret_arn)
                 secret_data = json.loads(response["SecretString"])
                 
-                logger.info("Successfully retrieved Google service account credentials from AWS Secrets Manager")
+                logger.info("Successfully retrieved Google service account credentials from dedicated secret")
                 return secret_data
                     
             except ClientError as e:

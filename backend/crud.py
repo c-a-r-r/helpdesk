@@ -224,25 +224,49 @@ class ScriptLogCRUD:
 
     @staticmethod
     def update_completion(db: Session, log_id: int, status: str, output: str = None, error_message: str = None, execution_time_seconds: int = None) -> Optional[ScriptLog]:
-        db_log = ScriptLogCRUD.get(db, log_id)
-        if not db_log:
-            return None
-        
-        from datetime import datetime
-        from models import ScriptStatus
-        
-        db_log.status = ScriptStatus(status)
-        db_log.completed_at = datetime.now()
-        if output:
-            db_log.output = output
-        if error_message:
-            db_log.error_message = error_message
-        if execution_time_seconds:
-            db_log.execution_time_seconds = execution_time_seconds
-        
-        db.commit()
-        db.refresh(db_log)
-        return db_log
+        try:
+            db_log = ScriptLogCRUD.get(db, log_id)
+            if not db_log:
+                return None
+            
+            from datetime import datetime
+            from models import ScriptStatus
+            import re
+            
+            # Clean error message to remove emojis and problematic characters
+            if error_message:
+                # Remove emoji and other 4-byte UTF-8 characters
+                emoji_pattern = re.compile("["
+                                          u"\U0001F600-\U0001F64F"  # emoticons
+                                          u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                                          u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                                          u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                                          u"\U00002702-\U000027B0"
+                                          u"\U000024C2-\U0001F251"
+                                          "]+", flags=re.UNICODE)
+                error_message = emoji_pattern.sub('', error_message)
+                error_message = error_message.encode('utf-8', 'ignore').decode('utf-8')
+                # Truncate if too long (typical MySQL TEXT limit)
+                error_message = error_message[:65535] if len(error_message) > 65535 else error_message
+            
+            db_log.status = ScriptStatus(status)
+            db_log.completed_at = datetime.now()
+            if output:
+                db_log.output = output
+            if error_message:
+                db_log.error_message = error_message
+            if execution_time_seconds:
+                db_log.execution_time_seconds = execution_time_seconds
+            
+            db.commit()
+            db.refresh(db_log)
+            return db_log
+            
+        except Exception as e:
+            # Rollback the session on any error
+            db.rollback()
+            print(f"Error updating script log completion: {str(e)}")
+            raise
 
 def generate_password(length: int = 16) -> str:
     """Generate a secure random password of specified length."""
@@ -391,26 +415,50 @@ class OffboardingScriptLogCRUD:
     @staticmethod
     def update_completion(db: Session, log_id: int, status: str, output: str = None, error_message: str = None, execution_time_seconds: int = None):
         """Update log with completion details"""
-        from models import OffboardingScriptLog, ScriptStatus
-        from datetime import datetime
-        
-        log = db.query(OffboardingScriptLog).filter(OffboardingScriptLog.id == log_id).first()
-        if log:
-            # Map status string to enum - handle both string formats
-            if status.lower() in ["completed", "success"]:
-                log.status = ScriptStatus.SUCCESS
-            elif status.lower() in ["failed", "error"]:
-                log.status = ScriptStatus.FAILED
-            else:
-                log.status = ScriptStatus.RUNNING
+        try:
+            from models import OffboardingScriptLog, ScriptStatus
+            from datetime import datetime
+            import re
+            
+            log = db.query(OffboardingScriptLog).filter(OffboardingScriptLog.id == log_id).first()
+            if log:
+                # Clean error message to remove emojis and problematic characters
+                if error_message:
+                    # Remove emoji and other 4-byte UTF-8 characters
+                    emoji_pattern = re.compile("["
+                                              u"\U0001F600-\U0001F64F"  # emoticons
+                                              u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                                              u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                                              u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                                              u"\U00002702-\U000027B0"
+                                              u"\U000024C2-\U0001F251"
+                                              "]+", flags=re.UNICODE)
+                    error_message = emoji_pattern.sub('', error_message)
+                    error_message = error_message.encode('utf-8', 'ignore').decode('utf-8')
+                    # Truncate if too long (typical MySQL TEXT limit)
+                    error_message = error_message[:65535] if len(error_message) > 65535 else error_message
                 
-            log.output = output
-            log.error_message = error_message
-            log.execution_time_seconds = execution_time_seconds
-            log.completed_at = datetime.now()
-            db.commit()
-            db.refresh(log)
-        return log
+                # Map status string to enum - handle both string formats
+                if status.lower() in ["completed", "success"]:
+                    log.status = ScriptStatus.SUCCESS
+                elif status.lower() in ["failed", "error"]:
+                    log.status = ScriptStatus.FAILED
+                else:
+                    log.status = ScriptStatus.RUNNING
+                    
+                log.output = output
+                log.error_message = error_message
+                log.execution_time_seconds = execution_time_seconds
+                log.completed_at = datetime.now()
+                db.commit()
+                db.refresh(log)
+            return log
+            
+        except Exception as e:
+            # Rollback the session on any error
+            db.rollback()
+            print(f"Error updating offboarding script log completion: {str(e)}")
+            raise
 
     @staticmethod
     def get_by_offboarding_id(db: Session, offboarding_id: int, limit: int = 20):

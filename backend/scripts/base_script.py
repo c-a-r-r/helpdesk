@@ -5,6 +5,7 @@ All scripts should inherit from this base class
 import json
 import sys
 import logging
+import re
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 from datetime import datetime
@@ -18,6 +19,24 @@ class BaseUserScript(ABC):
     def __init__(self):
         self.user_data = None
         self.execution_logs = []  # Capture logs for database storage
+    
+    @staticmethod
+    def clean_message_for_db(message: str) -> str:
+        """Remove emojis and other 4-byte UTF-8 characters that cause MySQL issues"""
+        # Remove emoji and other 4-byte UTF-8 characters
+        emoji_pattern = re.compile("["
+                                  u"\U0001F600-\U0001F64F"  # emoticons
+                                  u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                                  u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                                  u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                                  u"\U00002702-\U000027B0"
+                                  u"\U000024C2-\U0001F251"
+                                  "]+", flags=re.UNICODE)
+        cleaned = emoji_pattern.sub('', message)
+        
+        # Also remove other common problematic characters
+        cleaned = cleaned.encode('utf-8', 'ignore').decode('utf-8')
+        return cleaned.strip()
     
     def run(self):
         """Main entry point for script execution"""
@@ -74,32 +93,40 @@ class BaseUserScript(ABC):
     
     def output_error(self, error_message: str):
         """Output error result"""
+        # Clean error message for database storage
+        cleaned_message = self.clean_message_for_db(error_message)
         output = {
             "success": False,
-            "error": error_message
+            "error": cleaned_message
         }
         print(json.dumps(output), file=sys.stderr)
         sys.exit(1)
     
     def log_info(self, message: str):
         """Log info message"""
+        # Clean message for database storage
+        clean_message = self.clean_message_for_db(message)
         timestamp = f"[{datetime.now().strftime('%H:%M:%S')}]"
-        formatted_message = f"{timestamp} [INFO] {message}"
-        logger.info(f"[{self.__class__.__name__}] {message}")
+        formatted_message = f"{timestamp} [INFO] {clean_message}"
+        logger.info(f"[{self.__class__.__name__}] {clean_message}")
         self.execution_logs.append(formatted_message)
     
     def log_error(self, message: str):
         """Log error message"""
+        # Clean message for database storage
+        clean_message = self.clean_message_for_db(message)
         timestamp = f"[{datetime.now().strftime('%H:%M:%S')}]"
-        formatted_message = f"{timestamp} [ERROR] {message}"
-        logger.error(f"[{self.__class__.__name__}] {message}")
+        formatted_message = f"{timestamp} [ERROR] {clean_message}"
+        logger.error(f"[{self.__class__.__name__}] {clean_message}")
         self.execution_logs.append(formatted_message)
     
     def log_warning(self, message: str):
         """Log warning message"""
+        # Clean message for database storage
+        clean_message = self.clean_message_for_db(message)
         timestamp = f"[{datetime.now().strftime('%H:%M:%S')}]"
-        formatted_message = f"{timestamp} [WARNING] {message}"
-        logger.warning(f"[{self.__class__.__name__}] {message}")
+        formatted_message = f"{timestamp} [WARNING] {clean_message}"
+        logger.warning(f"[{self.__class__.__name__}] {clean_message}")
         self.execution_logs.append(formatted_message)
     
     def get_execution_logs(self) -> str:

@@ -66,7 +66,7 @@ class JumpCloudTerminateUser(BaseUserScript):
             # Unbind user from systems (optional - might want to keep for audit)
             # systems_result = self.unbind_systems(user_id)
             
-            self.log_info("✅ JumpCloud user termination completed successfully")
+            self.log_info("JumpCloud user termination completed successfully")
             
             return {
                 "status": "success",
@@ -146,7 +146,7 @@ class JumpCloudTerminateUser(BaseUserScript):
             response = requests.put(url, headers=headers, json=data)
             
             if response.status_code == 200:
-                self.log_info("✅ User account suspended successfully")
+                self.log_info("User account suspended successfully")
                 return True
             else:
                 self.log_error(f"Failed to suspend user: {response.status_code} - {response.text}")
@@ -194,7 +194,7 @@ class JumpCloudTerminateUser(BaseUserScript):
                     else:
                         self.log_warning(f"Failed to remove from group {group.get('name', group_id)}")
             
-            self.log_info(f"✅ Removed user from {removed_count} groups")
+            self.log_info(f"Removed user from {removed_count} groups")
             return {"removed_count": removed_count}
             
         except Exception as e:
