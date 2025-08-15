@@ -90,7 +90,7 @@
               <th>Company Email</th>
               <th>Department</th>
               <th>Title</th>
-              <th>Username</th>
+              <!-- <th>Username</th> -->
               <th>JumpCloud Status</th>
               <th>Google Status</th>
               <th>Created By</th>
@@ -105,7 +105,7 @@
               <td>{{ user.company_email || 'N/A' }}</td>
               <td>{{ user.department }}</td>
               <td>{{ user.title }}</td>
-              <td>{{ user.username }}</td>
+              <!-- <td>{{ user.username }}</td> -->
               <td>
                 <div class="account-status">
                   <span v-if="user.jumpcloud_status" :class="getAccountStatusClass(user.jumpcloud_status)">
@@ -1859,7 +1859,7 @@ export default {
   color: #166534;
   padding: 4px 28px 4px 8px;
   border-radius: 12px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 500;
   display: inline-flex;
   align-items: center;
@@ -1873,7 +1873,7 @@ export default {
   color: #dc2626;
   padding: 4px 8px;
   border-radius: 12px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 500;
   display: inline-flex;
   align-items: center;
@@ -1887,7 +1887,7 @@ export default {
   color: #1d4ed8;
   padding: 4px 8px;
   border-radius: 12px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 500;
   display: inline-flex;
   align-items: center;
@@ -1901,7 +1901,7 @@ export default {
   color: #dc2626;
   padding: 2px 6px;
   border-radius: 8px;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 500;
   display: inline-flex;
   align-items: center;

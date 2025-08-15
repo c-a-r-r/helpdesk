@@ -6,7 +6,7 @@ A comprehensive helpdesk and customer relationship management system built with 
 
 - **JumpCloud OAuth Authentication** - Secure single sign-on integration
 - **User Management** - Automated onboarding and offboarding workflows  
-- **Freshservice Integration** - Sync with Freshservice for ticket management
+- **FreshService Integration** - Sync with FreshService for ticket management
 - **Automox Integration** - Device management and agent deployment
 - **Google Workspace Integration** - User provisioning and management
 - **Dashboard** - Real-time monitoring and management interface
@@ -18,13 +18,14 @@ A comprehensive helpdesk and customer relationship management system built with 
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Vue.js        │    │   Nginx          │    │   FastAPI       │
 │   Frontend      │◄──►│   Reverse Proxy  │◄──►│   Backend       │
-│   (Port 80)     │    │   (Ports 80/443) │    │   (Port 8000)   │
+│   (Container)   │    │   (Ports 80/443) │    │   (Port 8000)   │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               │                          │
                               │                          ▼
                               │                   ┌─────────────────┐
-                              │                   │   MySQL/MariaDB │
+                              │                   │   MariaDB/MySQL │
                               │                   │   Database      │
+                              │                   │   (AWS RDS)     │
                               │                   └─────────────────┘
                               ▼
                        ┌──────────────────┐
@@ -43,7 +44,7 @@ A comprehensive helpdesk and customer relationship management system built with 
 
 ### Required Accounts & API Keys
 - **JumpCloud** - For OAuth authentication
-- **Freshservice** - For ticket management integration  
+- **FreshService** - For ticket management integration  
 - **Automox** - For device management
 - **Google Workspace** - For user provisioning
 - **AWS RDS** - For production database (optional)
@@ -104,19 +105,25 @@ JUMPCLOUD_CLIENT_SECRET=your-jumpcloud-client-secret
 JUMPCLOUD_ISSUER=https://oauth.id.jumpcloud.com/
 JUMPCLOUD_API_KEY=your-jumpcloud-api-key
 
-# Frontend URL (Update with your domain)
+# Frontend URL (Update with your domain - currently configured for helpdesk.amer.biz)
 FRONTEND_URL=https://your-domain.com
 CORS_ORIGINS=https://your-domain.com
 
 # External Service API Keys
-FRESHDESK_API_KEY=your-freshdesk-api-key
-FRESHDESK_DOMAIN=your-domain.freshdesk.com
+FRESHSERVICE_API_KEY=your-freshservice-api-key
+FRESHSERVICE_DOMAIN=your-domain.freshservice.com
 AUTOMOX_API_KEY_PROD=your-automox-api-key
 AUTOMOX_ORG_ID_PROD=your-automox-org-id
 
 # Security
 JWT_SECRET_KEY=generate-a-strong-secret-key
 ```
+
+**Note**: The current production deployment is configured for `helpdesk.amer.biz`. You'll need to update the domain references in:
+- `docker-compose.prod.yml` (VITE_API_BASE_URL)
+- `nginx/nginx.prod.conf` (server_name)
+- `backend/main.py` (CORS origins)
+- Environment variables
 
 ### 4. Configure JumpCloud OAuth
 
@@ -176,7 +183,7 @@ docker-compose -f docker-compose.prod.yml logs -f
    - Visit: `https://your-domain.com/docs`
 
 3. **Test OAuth Login:**
-   - Visit: `https://your-domain.com/api/login`
+   - Visit: `https://your-domain.com/login`
    - Should redirect to JumpCloud for authentication
 
 ## 🔧 Configuration Details
@@ -186,20 +193,21 @@ The nginx configuration includes:
 - SSL/TLS termination with Let's Encrypt certificates
 - HTTP to HTTPS redirect
 - OAuth callback routing: `/callback` → backend
+- OAuth login routing: `/login` → backend
 - API routing: `/api/*` → backend  
 - Frontend routing: `/*` → Vue.js frontend
 
 ### OAuth Flow
-1. User clicks login → `/api/login`
+1. User clicks login → `/login`
 2. Redirects to JumpCloud OAuth
 3. User authenticates with JumpCloud
 4. JumpCloud redirects to `/callback` with authorization code
-5. Backend exchanges code for tokens
-6. Backend redirects to frontend dashboard with user data
+5. Backend exchanges code for tokens and user info
+6. Backend redirects to frontend with user data in URL parameters
 
 ### Database
-- Production: AWS RDS MySQL/MariaDB
-- Development: Local MySQL container
+- Production: AWS RDS MariaDB/MySQL
+- Development: Local MariaDB container
 - Automatic migrations on startup
 
 ## 📁 Project Structure
@@ -211,18 +219,40 @@ helpdesk-crm/
 │   ├── models.py           # Database models
 │   ├── routes.py           # API routes
 │   ├── auth.py             # Authentication logic
+│   ├── database.py         # Database configuration
+│   ├── crud.py             # Database operations
+│   ├── schemas.py          # Pydantic schemas
+│   ├── run_migration.py    # Database migration script
 │   ├── scripts/            # Automation scripts
+│   │   ├── google_workspace/  # Google Workspace integration
+│   │   ├── jumpcloud/      # JumpCloud integration
+│   │   ├── automox/        # Automox integration
+│   │   ├── freshservice/   # FreshService integration
+│   │   └── offboarding/    # Offboarding automation
 │   └── requirements.txt    # Python dependencies
 ├── vue-app/                # Vue.js frontend
 │   ├── src/
+│   │   ├── components/     # Vue components
+│   │   ├── views/          # Page views
+│   │   ├── composables/    # Composition API composables
+│   │   ├── router/         # Vue Router configuration
+│   │   └── main.js         # Application entry point
 │   ├── Dockerfile.prod     # Production Docker build
-│   └── package.json        # Node.js dependencies
+│   ├── package.json        # Node.js dependencies
+│   └── vite.config.js      # Vite build configuration
 ├── nginx/                  # Nginx configuration
 │   ├── nginx.prod.conf     # Production nginx config
 │   └── ssl/                # SSL certificates directory
 ├── terraform/              # AWS infrastructure (optional)
+│   ├── main.tf             # Main Terraform configuration
+│   ├── variables.tf        # Variable definitions
+│   ├── terraform.tfvars    # Variable values
+│   └── outputs.tf          # Output definitions
 ├── docker-compose.prod.yml # Production deployment
+├── docker-compose.yml      # Development deployment
 ├── .env.production         # Production environment variables
+├── add_missing_columns.py  # Database column migration script
+├── scripts/                # Deployment and utility scripts
 └── README.md              # This file
 ```
 
@@ -285,11 +315,11 @@ docker-compose -f docker-compose.prod.yml up -d --build
 # Copy development environment
 cp .env.example .env
 
-# Start development services
+# Start development services  
 docker-compose up -d
 
 # Access services
-# Frontend: http://localhost:3000
+# Frontend: http://localhost:5173 (Vite dev server)
 # Backend: http://localhost:8000
 # API Docs: http://localhost:8000/docs
 ```
@@ -312,7 +342,8 @@ Once deployed, visit `https://your-domain.com/docs` for interactive API document
 **OAuth Login Not Working:**
 - Verify JumpCloud OAuth application configuration
 - Check redirect URI matches exactly: `https://your-domain.com/callback`
-- Ensure environment variables are set correctly
+- Ensure CORS origins include your domain in backend configuration
+- Verify environment variables are set correctly
 
 **SSL Certificate Issues:**
 - Verify certificates are copied to `nginx/ssl/` directory
